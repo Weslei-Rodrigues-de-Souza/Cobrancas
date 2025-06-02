@@ -1064,10 +1064,11 @@ def enviar_email_cobranca(boleto_id_interno):
 
             # REGISTRAR LOG DE SUCESSO
             novo_log = EmailLog(
-                horario_disparo=datetime.now(),
+ horario_disparo=datetime.now(),
                 email_remetente=config_email.email_remetente,
                 email_destinatario=destinatario_para,
-                email_cc=destinatarios_cc_str,
+ # Incluir email_cc SOMENTE se houver destinatarios_cc_str
+ **({'email_cc': destinatarios_cc_str} if destinatarios_cc_str else {}),
                 assunto=assunto_email,
                 mensagem_corpo=corpo_email_processado,
                 status='sucesso',
@@ -1087,9 +1088,11 @@ def enviar_email_cobranca(boleto_id_interno):
                 horario_disparo=datetime.now(),
                 email_remetente=config_email.email_remetente,
                 email_destinatario=destinatario_para,
-                email_cc=destinatarios_cc_str,
+                # Incluir email_cc SOMENTE se houver destinatarios_cc_str
+ **({'email_cc': destinatarios_cc_str} if destinatarios_cc_str else {}),
                 assunto=assunto_email,
                 mensagem_corpo=corpo_email_processado, # Pode ser útil para debug
+
                 status='falha_autenticacao',
                 cliente_id=cliente.id,
                 boleto_id=boleto.id,
@@ -1105,9 +1108,11 @@ def enviar_email_cobranca(boleto_id_interno):
                 horario_disparo=datetime.now(),
                 email_remetente=config_email.email_remetente,
                 email_destinatario=destinatario_para,
-                email_cc=destinatarios_cc_str,
+                # Incluir email_cc SOMENTE se houver destinatarios_cc_str
+ **({'email_cc': destinatarios_cc_str} if destinatarios_cc_str else {}),
                 assunto=assunto_email,
                 mensagem_corpo=corpo_email_processado,
+
                 status='falha_conexao',
                 cliente_id=cliente.id,
                 boleto_id=boleto.id,
@@ -1123,9 +1128,11 @@ def enviar_email_cobranca(boleto_id_interno):
                 horario_disparo=datetime.now(),
                 email_remetente=config_email.email_remetente,
                 email_destinatario=destinatario_para,
-                email_cc=destinatarios_cc_str,
+                # Incluir email_cc SOMENTE se houver destinatarios_cc_str
+ **({'email_cc': destinatarios_cc_str} if destinatarios_cc_str else {}),
                 assunto=assunto_email,
                 mensagem_corpo=corpo_email_processado,
+
                 status='falha_smtp',
                 cliente_id=cliente.id,
                 boleto_id=boleto.id,
@@ -1141,9 +1148,11 @@ def enviar_email_cobranca(boleto_id_interno):
                 horario_disparo=datetime.now(),
                 email_remetente=config_email.email_remetente,
                 email_destinatario=destinatario_para,
-                email_cc=destinatarios_cc_str,
+                # Incluir email_cc SOMENTE se houver destinatarios_cc_str
+ **({'email_cc': destinatarios_cc_str} if destinatarios_cc_str else {}),
                 assunto=assunto_email,
                 mensagem_corpo=corpo_email_processado,
+
                 status='falha_dns',
                 cliente_id=cliente.id,
                 boleto_id=boleto.id,
@@ -1159,9 +1168,11 @@ def enviar_email_cobranca(boleto_id_interno):
                 horario_disparo=datetime.now(),
                 email_remetente=config_email.email_remetente,
                 email_destinatario=destinatario_para,
-                email_cc=destinatarios_cc_str,
+                # Incluir email_cc SOMENTE se houver destinatarios_cc_str
+ **({'email_cc': destinatarios_cc_str} if destinatarios_cc_str else {}),
                 assunto=assunto_email,
                 mensagem_corpo=corpo_email_processado,
+
                 status='falha_geral',
                 cliente_id=cliente.id,
                 boleto_id=boleto.id,

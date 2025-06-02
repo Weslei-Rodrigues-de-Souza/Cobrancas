@@ -96,12 +96,19 @@ class EmailLog(db.Model):
     __tablename__ = 'email_logs'
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     horario_disparo = db.Column(db.TEXT, nullable=False)
-    email_remetente = db.Column(db.TEXT, nullable=True)
+    email_remetente = db.Column(db.String(120), nullable=True)
     email_destinatario = db.Column(db.TEXT, nullable=False)
-    nome_empresa = db.Column(db.TEXT, nullable=True)  # Pode ser nulo se não houver associação direta com empresa
+    email_cc = db.Column(db.String(500), nullable=True) # Novo campo para e-mails em CC
+    nome_empresa = db.Column(db.String(150), nullable=True)  # Pode ser nulo se não houver associação direta com empresa
     nome_contato = db.Column(db.TEXT, nullable=True)
-    id_boleto = db.Column(db.INTEGER, nullable=False)
+    # Referência ao boleto e cliente usando ForeignKey, mais robusto
+    boleto_id = db.Column(db.Integer, db.ForeignKey('boleto.id', name='fk_email_log_boleto_id'), nullable=True) # Permitir nulo caso o boleto seja excluído
+    cliente_id = db.Column(db.Integer, db.ForeignKey('cliente.id', name='fk_email_log_cliente_id'), nullable=True) # Permitir nulo caso o cliente seja excluído
     data_boleto = db.Column(db.TEXT, nullable=False)
+    assunto = db.Column(db.String(255), nullable=True)
+    mensagem_corpo = db.Column(db.Text, nullable=True)
+    status = db.Column(db.String(50), nullable=True) # Ex: sucesso, falha_autenticacao, etc.
+    detalhes = db.Column(db.Text, nullable=True) # Detalhes adicionais sobre o status
 
 
 def init_app(app):
