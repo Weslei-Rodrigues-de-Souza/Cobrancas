@@ -92,6 +92,17 @@ class ConfiguracaoEmail(db.Model):
     def __repr__(self):
         return f'<ConfiguracaoEmail {self.email_remetente}>'
 
+class EmailLog(db.Model):
+    __tablename__ = 'email_logs'
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    horario_disparo = db.Column(db.TEXT, nullable=False)
+    email_destinatario = db.Column(db.TEXT, nullable=False)
+    nome_empresa = db.Column(db.TEXT, nullable=True)  # Pode ser nulo se não houver associação direta com empresa
+    nome_contato = db.Column(db.TEXT, nullable=True)
+    id_boleto = db.Column(db.INTEGER, nullable=False)
+    data_boleto = db.Column(db.TEXT, nullable=False)
+
+
 def init_app(app):
     base_dir = os.path.abspath(os.path.dirname(__file__))
     database_path = os.path.join(base_dir, 'cobrancas.db')

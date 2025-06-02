@@ -15,7 +15,7 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.mime.image import MIMEImage 
-from email.utils import formataddr
+from email.utils import formataddr, parseaddr
 import re 
 import base64 
 
@@ -26,13 +26,18 @@ if not app.debug:
     app.logger.setLevel(logging.INFO)
     if not app.logger.handlers:
         handler = logging.StreamHandler()
-        handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
+        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        handler.setFormatter(formatter)
         app.logger.addHandler(handler)
 else:
     app.logger.setLevel(logging.DEBUG)
     if not app.logger.handlers:
         handler = logging.StreamHandler()
-        handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
+        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        handler.setFormatter(formatter)
+        # Adicionar um FileHandler em DEBUG para log mais detalhado
+        file_handler = logging.FileHandler('app_debug.log')
+        file_handler.setFormatter(formatter)
         app.logger.addHandler(handler)
 init_db(app) 
 
@@ -883,6 +888,48 @@ def processar_notificacoes_manualmente():
     else: flash(flash_msg, 'success')
     return redirect(url_for('main.configuracoes_email'))
 
+# --- Rota para Visualização de Logs de E-mail ---
+@main_bp.route('/logs_email')
+def listar_logs_email():
+    page = request.args.get('page', 1, type=int)
+    logs_por_pagina = 10 
+    log_entries = EmailLog.query.order_by(EmailLog.horario_disparo.desc()).paginate(
+        page=page, per_page=logs_por_pagina, error_out=False
+    )
+    return render_template('logs_email.html', logs=log_entries)
+
+@main_bp.route('/logs_email/<int:log_id>/dados_json')
+def dados_log_email_json(log_id):
+ log = db.session.get(EmailLog, log_id)
+ if not log:
+ return jsonify({"error": "Log não encontrado."}), 404
+
+    # Preparar os dados para JSON, tratando None e objetos relacionados
+ cliente_nome = log.cliente.nome if log.cliente else 'Cliente Removido'
+ boleto_public_id = log.boleto.public_id if log.boleto else 'Boleto Removido'
+
+ log_data = {
+ 'id': log.id,
+ 'horario_disparo': log.horario_disparo.strftime('%d/%m/%Y %H:%M:%S') if log.horario_disparo else 'N/D',
+ 'email_remetente': log.email_remetente or 'N/D',
+ 'email_destinatario': log.email_destinatario or 'N/D',
+ 'email_cc': log.email_cc or 'N/D',
+ 'assunto': log.assunto or 'Sem Assunto',
+ 'mensagem_corpo': log.mensagem_corpo or 'Corpo da mensagem vazio.',
+ 'status': log.status or 'desconhecido',
+ 'cliente_id': log.cliente_id,
+ 'cliente_nome': cliente_nome,
+ 'boleto_id': log.boleto_id,
+ 'boleto_public_id': boleto_public_id,
+ 'detalhes': log.detalhes or 'Sem detalhes adicionais.'
+ }
+
+ return jsonify(log_data)
+
+@main_bp.route('/logs_email/<int:log_id>')
+def visualizar_log_email(log_id):
+    log = db.session.get(EmailLog, log_id)
+    return render_template('modal_log_email_detalhes.html', log=log)
 # --- Função de Envio de E-mail (com CID embedding e tag {nome_contato} e {lista_datas_vencidas}) ---
 def enviar_email_cobranca(boleto_id_interno):
     with app.app_context():
@@ -890,40 +937,40 @@ def enviar_email_cobranca(boleto_id_interno):
         if not boleto:
             app.logger.error(f"Boleto não encontrado: ID Interno {boleto_id_interno}")
             return False
-        
+
         cliente = boleto.cliente
         if not cliente:
             app.logger.error(f"Boleto ID Interno {boleto_id_interno} (PubID: {boleto.public_id}) não tem cliente associado.")
             return False
-            
+
         config_email = ConfiguracaoEmail.query.first()
         if not config_email or not all([
             config_email.email_remetente,
-            config_email.senha_remetente, 
+            config_email.senha_remetente,
             config_email.texto_padrao_email
         ]):
             app.logger.error(f"Configurações de E-mail Gmail (usuário, senha de app) ou template incompletas. E-mail não enviado para boleto {boleto.public_id}.")
             return False
 
         destinatario_para = None
-        nome_contato_para_template = cliente.nome 
+        nome_contato_para_template = cliente.nome
         contato_principal = Contato.query.filter_by(cliente_id=cliente.id, is_principal=True).first()
-        
+
         if contato_principal:
             if contato_principal.email:
                 destinatario_para = contato_principal.email
-            if contato_principal.nome: 
+            if contato_principal.nome:
                 nome_contato_para_template = contato_principal.nome
-        elif cliente.email_principal: 
+        elif cliente.email_principal:
             destinatario_para = cliente.email_principal
-        
+
         if not destinatario_para:
             app.logger.warning(f"Não foi possível determinar destinatário para cliente {cliente.nome}. E-mail não enviado para boleto {boleto.public_id}.")
             return False
 
         destinatarios_cc_lista = [c.email for c in cliente.contatos if c.email and c.email != destinatario_para and not (c.is_principal and c.email == destinatario_para)]
         destinatarios_cc_str = ", ".join(list(set(destinatarios_cc_lista)))
-        
+
         # Buscar boletos vencidos para a tag {lista_datas_vencidas}
         hoje_para_vencidos = date.today() # Usar data atual para definir "vencido"
         boletos_vencidos_cliente = Boleto.query.filter(
@@ -936,12 +983,12 @@ def enviar_email_cobranca(boleto_id_interno):
         if boletos_vencidos_cliente:
             datas_formatadas = [b_venc.data_vencimento.strftime('%d/%m/%Y') for b_venc in boletos_vencidos_cliente]
             lista_datas_vencidas_str = ", ".join(datas_formatadas)
-        
+
         app.logger.debug(f"Cliente {cliente.nome}, Boletos vencidos: {lista_datas_vencidas_str}")
 
         corpo_email_html_template = config_email.texto_padrao_email.format(
-            nome_cliente=cliente.nome or "Cliente", 
-            nome_contato=nome_contato_para_template, 
+            nome_cliente=cliente.nome or "Cliente",
+            nome_contato=nome_contato_para_template,
             data_vencimento=boleto.data_vencimento.strftime('%d/%m/%Y') if boleto.data_vencimento else "N/D", # Vencimento do boleto principal da notificação
             lista_datas_vencidas=lista_datas_vencidas_str, # Lista de outros vencidos
             valor_boleto=f"{boleto.valor:,.2f}".replace(',', '#').replace('.', ',').replace('#', '.') if boleto.valor is not None else "N/D",
@@ -950,7 +997,7 @@ def enviar_email_cobranca(boleto_id_interno):
             nome_remetente_empresa=config_email.nome_remetente or "Sua Empresa"
         )
         assunto_email = f"Cobrança: {boleto.descricao_completa or boleto.descricao_base} - Venc: {boleto.data_vencimento.strftime('%d/%m/%Y') if boleto.data_vencimento else 'N/D'}"
-        
+
         if config_email.nome_remetente:
             remetente_formatado = formataddr((config_email.nome_remetente, config_email.email_remetente))
         else:
@@ -962,11 +1009,11 @@ def enviar_email_cobranca(boleto_id_interno):
         msg_root['To'] = destinatario_para
         if destinatarios_cc_str:
             msg_root['Cc'] = destinatarios_cc_str
-        
+
         corpo_email_processado = corpo_email_html_template
         image_parts = []
         img_pattern = re.compile(r'<img[^>]*src="data:image/(png|jpeg|gif|webp);base64,([^"]+)"[^>]*>')
-        
+
         matches = list(img_pattern.finditer(corpo_email_html_template))
         for i, match in enumerate(matches):
             img_type = match.group(1)
@@ -982,7 +1029,7 @@ def enviar_email_cobranca(boleto_id_interno):
                 app.logger.debug(f"Imagem base64 embutida com CID: {image_cid}")
             except Exception as e_img:
                 app.logger.error(f"Erro ao processar imagem base64: {e_img}")
-                pass 
+                pass
 
         msg_alternative = MIMEMultipart('alternative')
         msg_alternative.attach(MIMEText(corpo_email_processado, 'html', 'utf-8'))
@@ -992,40 +1039,133 @@ def enviar_email_cobranca(boleto_id_interno):
             msg_root.attach(img_part)
 
         gmail_server = "smtp.gmail.com"
-        gmail_port = 587 
+        gmail_port = 587
 
         server = None
         try:
             app.logger.debug(f"Conectando via SMTP a {gmail_server}:{gmail_port}")
             server = smtplib.SMTP(gmail_server, gmail_port, timeout=20)
             app.logger.debug("Iniciando TLS...")
-            server.starttls() 
-            
+            server.starttls()
+
             app.logger.debug(f"Fazendo login com usuário Gmail: {config_email.email_remetente}")
             app.logger.info(f"CREDENCIAIS PARA LOGIN SMTP: Usuário='{config_email.email_remetente}', Senha (primeiros/últimos 4 chars)='{config_email.senha_remetente[:4]}...{config_email.senha_remetente[-4:] if config_email.senha_remetente and len(config_email.senha_remetente) > 7 else 'N/A'}'")
-            server.login(config_email.email_remetente, config_email.senha_remetente) 
-            
+            server.login(config_email.email_remetente, config_email.senha_remetente)
+
             todos_os_destinatarios = [destinatario_para] + list(set(destinatarios_cc_lista))
-            
+
             app.logger.debug(f"Enviando mensagem para: {todos_os_destinatarios}")
             server.send_message(msg_root)
-            
+
             app.logger.info(f"E-mail para boleto {boleto.public_id} enviado para {destinatario_para} (Cc: {destinatarios_cc_str}). Servidor: {gmail_server}.")
+
+            # REGISTRAR LOG DE SUCESSO
+            novo_log = EmailLog(
+                horario_disparo=datetime.now(),
+                email_remetente=config_email.email_remetente,
+                email_destinatario=destinatario_para,
+                email_cc=destinatarios_cc_str,
+                assunto=assunto_email,
+                mensagem_corpo=corpo_email_processado,
+                status='sucesso',
+                cliente_id=cliente.id,
+                boleto_id=boleto.id,
+                detalhes="E-mail enviado com sucesso."
+            )
+            db.session.add(novo_log)
+            db.session.commit() # Commit do log
+            app.logger.info(f"Log de e-mail de sucesso registrado para boleto {boleto.public_id}.")
+
             return True
         except smtplib.SMTPAuthenticationError as e_auth:
             app.logger.error(f"Falha de autenticação ao enviar e-mail para boleto {boleto.public_id} via Gmail: {e_auth}", exc_info=True)
+            # REGISTRAR LOG DE FALHA (AUTENTICAÇÃO)
+            novo_log = EmailLog(
+                horario_disparo=datetime.now(),
+                email_remetente=config_email.email_remetente,
+                email_destinatario=destinatario_para,
+                email_cc=destinatarios_cc_str,
+                assunto=assunto_email,
+                mensagem_corpo=corpo_email_processado, # Pode ser útil para debug
+                status='falha_autenticacao',
+                cliente_id=cliente.id,
+                boleto_id=boleto.id,
+                detalhes=f"Falha de autenticação: {e_auth}"
+            )
+            db.session.add(novo_log)
+            db.session.commit() # Commit do log
             return False
         except smtplib.SMTPServerDisconnected as e_dc:
             app.logger.error(f"Servidor Gmail desconectado ao enviar e-mail para boleto {boleto.public_id}: {e_dc}", exc_info=True)
+            # REGISTRAR LOG DE FALHA (DESCONEXÃO)
+            novo_log = EmailLog(
+                horario_disparo=datetime.now(),
+                email_remetente=config_email.email_remetente,
+                email_destinatario=destinatario_para,
+                email_cc=destinatarios_cc_str,
+                assunto=assunto_email,
+                mensagem_corpo=corpo_email_processado,
+                status='falha_conexao',
+                cliente_id=cliente.id,
+                boleto_id=boleto.id,
+                detalhes=f"Servidor desconectado: {e_dc}"
+            )
+            db.session.add(novo_log)
+            db.session.commit() # Commit do log
             return False
-        except smtplib.SMTPException as e_smtp: 
+        except smtplib.SMTPException as e_smtp:
             app.logger.error(f"Erro SMTP ao enviar e-mail para boleto {boleto.public_id} via Gmail: {e_smtp}", exc_info=True)
+            # REGISTRAR LOG DE FALHA (SMTP GENÉRICO)
+            novo_log = EmailLog(
+                horario_disparo=datetime.now(),
+                email_remetente=config_email.email_remetente,
+                email_destinatario=destinatario_para,
+                email_cc=destinatarios_cc_str,
+                assunto=assunto_email,
+                mensagem_corpo=corpo_email_processado,
+                status='falha_smtp',
+                cliente_id=cliente.id,
+                boleto_id=boleto.id,
+                detalhes=f"Erro SMTP: {e_smtp}"
+            )
+            db.session.add(novo_log)
+            db.session.commit() # Commit do log
             return False
-        except socket.gaierror as e_gaierror: 
+        except socket.gaierror as e_gaierror:
              app.logger.error(f"Erro de resolução de endereço (getaddrinfo failed) para {gmail_server}: {e_gaierror}", exc_info=True)
+             # REGISTRAR LOG DE FALHA (RESOLUÇÃO DE ENDEREÇO)
+             novo_log = EmailLog(
+                horario_disparo=datetime.now(),
+                email_remetente=config_email.email_remetente,
+                email_destinatario=destinatario_para,
+                email_cc=destinatarios_cc_str,
+                assunto=assunto_email,
+                mensagem_corpo=corpo_email_processado,
+                status='falha_dns',
+                cliente_id=cliente.id,
+                boleto_id=boleto.id,
+                detalhes=f"Erro de resolução de endereço: {e_gaierror}"
+            )
+             db.session.add(novo_log)
+             db.session.commit() # Commit do log
              return False
         except Exception as e:
             app.logger.error(f"Falha geral ao enviar e-mail para boleto {boleto.public_id} via Gmail: {e}", exc_info=True)
+            # REGISTRAR LOG DE FALHA (ERRO GERAL)
+            novo_log = EmailLog(
+                horario_disparo=datetime.now(),
+                email_remetente=config_email.email_remetente,
+                email_destinatario=destinatario_para,
+                email_cc=destinatarios_cc_str,
+                assunto=assunto_email,
+                mensagem_corpo=corpo_email_processado,
+                status='falha_geral',
+                cliente_id=cliente.id,
+                boleto_id=boleto.id,
+                detalhes=f"Erro geral: {e}"
+            )
+            db.session.add(novo_log)
+            db.session.commit() # Commit do log
             return False
         finally:
             if server:
@@ -1034,6 +1174,7 @@ def enviar_email_cobranca(boleto_id_interno):
                     app.logger.debug("Conexão SMTP com Gmail fechada.")
                 except:
                     pass
+
 
 # --- Tarefa Agendada ---
 def tarefa_enviar_notificacoes_agendadas():

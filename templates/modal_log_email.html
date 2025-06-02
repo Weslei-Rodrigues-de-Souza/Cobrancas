@@ -1,0 +1,46 @@
+<div class="modal-header">
+    <h5 class="modal-title">Detalhes do Log de Envio de E-mail</h5>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+</div>
+<div class="modal-body">
+    <div class="mb-3">
+        <strong>ID do Log:</strong> <span id="log-detail-id"></span>
+    </div>
+    <div class="mb-3">
+        <strong>Horário do Disparo:</strong> <span id="log-detail-horario"></span>
+    </div>
+    <div class="mb-3">
+        <strong>Status:</strong> <span id="log-detail-status"></span>
+    </div>
+    <div class="mb-3">
+        <strong>Remetente:</strong> <span id="log-detail-remetente"></span>
+    </div>
+    <div class="mb-3">
+        <strong>Destinatário(s) Para:</strong> <span id="log-detail-destinatario"></span>
+    </div>
+    <div class="mb-3" id="log-detail-cc-div" style="display: none;">
+        <strong>Destinatário(s) Cc:</strong> <span id="log-detail-cc"></span>
+    </div>
+    <div class="mb-3">
+        <strong>Assunto:</strong> <span id="log-detail-assunto"></span>
+    </div>
+    <div class="mb-3" id="log-detail-cliente-div" style="display: none;">
+        <strong>Cliente Associado:</strong> <span id="log-detail-cliente"></span>
+    </div>
+     <div class="mb-3" id="log-detail-boleto-div" style="display: none;">
+        <strong>Boleto Associado:</strong> <span id="log-detail-boleto"></span>
+    </div>
+    <hr>
+    <div class="mb-3">
+        <strong>Corpo da Mensagem:</strong>
+        <div id="log-detail-corpo" style="border: 1px solid #ccc; padding: 10px; max-height: 400px; overflow-y: auto;">
+            <!-- O conteúdo HTML do corpo do e-mail será carregado aqui -->
+        </div>
+    </div>
+    <div class="mb-3" id="log-detail-detalhes-div" style="display: none;">
+        <strong>Detalhes da Falha:</strong> <span id="log-detail-detalhes"></span>
+    </div>
+</div>
+<div class="modal-footer">
+    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+</div>
