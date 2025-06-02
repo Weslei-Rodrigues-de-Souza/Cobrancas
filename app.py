@@ -761,10 +761,12 @@ def configuracoes_email():
         nome_remetente = request.form.get('nome_remetente', 'Sistema de Cobranças')
         texto_padrao_email = request.form.get('texto_padrao_email') 
         dias_antecedencia_str = request.form.get('dias_antecedencia_vencimento')
+        notificar_atrasados = request.form.get('notificar_atrasados') == 'on' # Capturar o valor do toggle/checkbox
         dia_semana_envio = request.form.get('dia_semana_envio')
         horario_envio_str = request.form.get('horario_envio')
+        chave_api_gemini = request.form.get('chave_api_gemini')
 
-        if not senha_remetente_gmail and senha_configurada_anteriormente:
+        if not senha_remetente_gmail and senha_configurada_anteriormente: # Mantém a senha se não for submetida
             senha_para_salvar = config.senha_remetente
         else:
             senha_para_salvar = senha_remetente_gmail
@@ -778,6 +780,8 @@ def configuracoes_email():
                 if config.horario_envio and 'horario_envio' not in form_data_repopulate :
                      form_data_repopulate['horario_envio'] = config.horario_envio.strftime('%H:%M')
                 form_data_repopulate['dias_antecedencia_vencimento'] = config.dias_antecedencia_vencimento if 'dias_antecedencia_vencimento' not in form_data_repopulate else form_data_repopulate['dias_antecedencia_vencimento']
+                form_data_repopulate['notificar_atrasados'] = config.notificar_atrasados
+                form_data_repopulate['chave_api_gemini'] = 'Configurada' if config.chave_api_gemini else '' # Não repopula a chave
                 form_data_repopulate['dia_semana_envio'] = config.dia_semana_envio if 'dia_semana_envio' not in form_data_repopulate else form_data_repopulate['dia_semana_envio']
             form_data_repopulate['senha_configurada'] = senha_configurada_anteriormente
             return render_template('configuracoes.html', config=config, form_data=form_data_repopulate)
@@ -816,6 +820,8 @@ def configuracoes_email():
             config.nome_remetente = nome_remetente
             config.texto_padrao_email = texto_padrao_email
             config.dias_antecedencia_vencimento = dias_antecedencia_obj
+            config.notificar_atrasados = notificar_atrasados
+            config.chave_api_gemini = chave_api_gemini if chave_api_gemini else (config.chave_api_gemini if config and not chave_api_gemini else None) # Mantém a chave se vazio, a menos que seja a primeira configuração
             config.dia_semana_envio = dia_semana_envio
             config.horario_envio = horario_envio_obj
             
@@ -850,6 +856,8 @@ def configuracoes_email():
             'nome_remetente': config.nome_remetente,
             'texto_padrao_email': config.texto_padrao_email,
             'dias_antecedencia_vencimento': config.dias_antecedencia_vencimento,
+            'notificar_atrasados': config.notificar_atrasados,
+            'chave_api_gemini': 'Configurada' if config.chave_api_gemini else '', # Passa placeholder
             'dia_semana_envio': config.dia_semana_envio,
             'horario_envio': config.horario_envio.strftime('%H:%M') if config.horario_envio else '09:00',
             'senha_configurada': senha_configurada_anteriormente
@@ -860,6 +868,8 @@ def configuracoes_email():
             'nome_remetente': 'Sistema de Cobranças',
             'texto_padrao_email': "<p>Olá {nome_contato},</p><p>Segue o boleto referente a <strong>{descricao_boleto}</strong> no valor de <strong>R$ {valor_boleto}</strong>, com vencimento em <em>{data_vencimento}</em>.</p><p>Lembramos que também constam os seguintes vencimentos em aberto: {lista_datas_vencidas}.</p><p>Qualquer dúvida, estamos à disposição.</p><p>Atenciosamente,<br>{nome_remetente_empresa}</p>",
             'dias_antecedencia_vencimento': 3, 
+            'notificar_atrasados': True,
+            'chave_api_gemini': '', # Placeholder
             'dia_semana_envio': 'segunda', 
             'horario_envio': '09:00',
             'senha_configurada': False 
@@ -1000,12 +1010,13 @@ def enviar_email_cobranca(boleto_id_interno):
 
         app.logger.debug(f"Cliente {cliente.nome}, Boletos vencidos: {lista_datas_vencidas_str}")
 
+        # Aqui você pode usar config_email.chave_api_gemini e config_email.notificar_atrasados
+        # para ajustar o texto do e-mail, se necessário. Ex: se notificar_atrasados=True
+        # e chave_api_gemini existe, usar a API para gerar um texto diferente para a lista.
+        # A implementação da chamada da API em si não está neste diff.
+
         corpo_email_html_template = config_email.texto_padrao_email.format(
             nome_cliente=cliente.nome or "Cliente",
-            nome_contato=nome_contato_para_template,
-            data_vencimento=boleto.data_vencimento.strftime('%d/%m/%Y') if boleto.data_vencimento else "N/D", # Vencimento do boleto principal da notificação
-            lista_datas_vencidas=lista_datas_vencidas_str, # Lista de outros vencidos
-            valor_boleto=f"{boleto.valor:,.2f}".replace(',', '#').replace('.', ',').replace('#', '.') if boleto.valor is not None else "N/D",
             id_boleto=boleto.public_id,
             descricao_boleto=boleto.descricao_completa or boleto.descricao_base or "Serviços Prestados",
             nome_remetente_empresa=config_email.nome_remetente or "Sua Empresa"
@@ -1017,6 +1028,13 @@ def enviar_email_cobranca(boleto_id_interno):
         else:
             remetente_formatado = config_email.email_remetente
 
+        template_vars = {
+            'nome_contato': nome_contato_para_template,
+            'data_vencimento': boleto.data_vencimento.strftime('%d/%m/%Y') if boleto.data_vencimento else "N/D",
+            'valor_boleto': f"{boleto.valor:,.2f}".replace(',', '#').replace('.', ',').replace('#', '.') if boleto.valor is not None else "N/D",
+            'lista_datas_vencidas': lista_datas_vencidas_str if config_email.notificar_atrasados else "Nenhuma" # Só inclui a lista se a notificação de atrasados estiver ligada
+        }
+
         msg_root = MIMEMultipart('related')
         msg_root['Subject'] = assunto_email
         msg_root['From'] = remetente_formatado
@@ -1025,7 +1043,8 @@ def enviar_email_cobranca(boleto_id_interno):
             msg_root['Cc'] = destinatarios_cc_str
 
         corpo_email_processado = corpo_email_html_template
-        image_parts = []
+        # Re-processar o template com as variáveis, incluindo {lista_datas_vencidas}
+        corpo_email_processado = corpo_email_html_template.format(**template_vars)
         img_pattern = re.compile(r'<img[^>]*src="data:image/(png|jpeg|gif|webp);base64,([^"]+)"[^>]*>')
 
         matches = list(img_pattern.finditer(corpo_email_html_template))

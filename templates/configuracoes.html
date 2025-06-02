@@ -44,7 +44,12 @@
             </div>
             <div id="collapseAgendamento" class="collapse show" aria-labelledby="headingAgendamento" data-parent="#accordionConfiguracoes">
                 <div class="card-body">
-                    <div class="form-row">
+ <div class="form-group form-check">
+ <input type="checkbox" class="form-check-input" id="notificar_atrasados" name="notificar_atrasados" value="True" {% if form_data.get('notificar_atrasados', config.notificar_atrasados if config is defined and config.notificar_atrasados is not none else false) %} checked {% endif %}>
+ <label class="form-check-label" for="notificar_atrasados">Notificar Boletos Atrasados?</label>
+ <small class="form-text text-muted">Se ativado, o sistema também enviará notificações para boletos que já passaram da data de vencimento.</small>
+ </div>
+ <div class="form-row">
                         <div class="form-group col-md-6">
                             <label for="dias_antecedencia_vencimento">Iniciar notificações quantos dias antes do vencimento?</label>
                             <input type="number" class="form-control" id="dias_antecedencia_vencimento" name="dias_antecedencia_vencimento" value="{{ form_data.get('dias_antecedencia_vencimento', config.dias_antecedencia_vencimento if config and config.dias_antecedencia_vencimento is not none else 3) }}" min="0">
@@ -156,6 +161,18 @@
                             <a href="https://support.google.com/accounts/answer/185833" target="_blank">Saiba como gerar uma Senha de App aqui.</a>
                         </small>
                     </div>
+                    <div class="form-group">
+ <label for="chave_api_gemini">Chave da API Google Gemini (Opcional)</label>
+ <input type="text" class="form-control" id="chave_api_gemini" name="chave_api_gemini" 
+ placeholder="{{ 'Configurada' if form_data.get('chave_api_gemini_configurada') else 'Insira sua chave da API Gemini (opcional)' }}"
+ aria-describedby="geminiApiKeyHelpBlock">
+ {% if form_data.get('chave_api_gemini_configurada') %}
+ <small id="geminiApiKeyConfiguradaHelp" class="form-text text-success">
+ <i class="fas fa-check-circle"></i> Uma chave API Gemini já foi configurada. Preencha este campo apenas se desejar alterá-la.
+ </small>
+ {% endif %}
+ <small id="geminiApiKeyHelpBlock" class="form-text text-muted">Se configurada, será usada para formatar a lista de boletos atrasados no e-mail quando a opção "Notificar Boletos Atrasados" estiver ativa.</small>
+ </div>
                      <div class="form-group">
                         <label for="nome_remetente">Nome do Remetente (Opcional)</label>
                         <input type="text" class="form-control" id="nome_remetente" name="nome_remetente" value="{{ form_data.get('nome_remetente', 'Sistema de Cobranças') }}" placeholder="Nome da sua empresa ou sistema">
