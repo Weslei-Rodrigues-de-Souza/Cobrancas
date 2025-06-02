@@ -900,31 +900,31 @@ def listar_logs_email():
 
 @main_bp.route('/logs_email/<int:log_id>/dados_json')
 def dados_log_email_json(log_id):
- log = db.session.get(EmailLog, log_id)
- if not log:
- return jsonify({"error": "Log não encontrado."}), 404
+    log = db.session.get(EmailLog, log_id)
+    if not log:
+       return jsonify({"error": "Log não encontrado."}), 404
 
-    # Preparar os dados para JSON, tratando None e objetos relacionados
- cliente_nome = log.cliente.nome if log.cliente else 'Cliente Removido'
- boleto_public_id = log.boleto.public_id if log.boleto else 'Boleto Removido'
+        # Preparar os dados para JSON, tratando None e objetos relacionados
+    cliente_nome = log.cliente.nome if log.cliente else 'Cliente Removido'
+    boleto_public_id = log.boleto.public_id if log.boleto else 'Boleto Removido'
 
- log_data = {
- 'id': log.id,
- 'horario_disparo': log.horario_disparo.strftime('%d/%m/%Y %H:%M:%S') if log.horario_disparo else 'N/D',
- 'email_remetente': log.email_remetente or 'N/D',
- 'email_destinatario': log.email_destinatario or 'N/D',
- 'email_cc': log.email_cc or 'N/D',
- 'assunto': log.assunto or 'Sem Assunto',
- 'mensagem_corpo': log.mensagem_corpo or 'Corpo da mensagem vazio.',
- 'status': log.status or 'desconhecido',
- 'cliente_id': log.cliente_id,
- 'cliente_nome': cliente_nome,
- 'boleto_id': log.boleto_id,
- 'boleto_public_id': boleto_public_id,
- 'detalhes': log.detalhes or 'Sem detalhes adicionais.'
- }
+    log_data = {
+    'id': log.id,
+    'horario_disparo': log.horario_disparo.strftime('%d/%m/%Y %H:%M:%S') if log.horario_disparo else 'N/D',
+    'email_remetente': log.email_remetente or 'N/D',
+    'email_destinatario': log.email_destinatario or 'N/D',
+    'email_cc': log.email_cc or 'N/D',
+    'assunto': log.assunto or 'Sem Assunto',
+    'mensagem_corpo': log.mensagem_corpo or 'Corpo da mensagem vazio.',
+    'status': log.status or 'desconhecido',
+    'cliente_id': log.cliente_id,
+    'cliente_nome': cliente_nome,
+    'boleto_id': log.boleto_id,
+    'boleto_public_id': boleto_public_id,
+    'detalhes': log.detalhes or 'Sem detalhes adicionais.'
+    }
 
- return jsonify(log_data)
+    return jsonify(log_data)
 
 @main_bp.route('/logs_email/<int:log_id>')
 def visualizar_log_email(log_id):
