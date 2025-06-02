@@ -121,85 +121,10 @@
 </div>
 {% endif %}
 
-<!-- Modal para Visualizar Log (Conteúdo será carregado via AJAX) -->
-<div class="modal fade" id="viewLogModal" tabindex="-1" aria-labelledby="viewLogModalLabel" aria-hidden="true">
- <div class="modal-dialog modal-lg">
- <div class="modal-content">
- <div class="modal-header">
- <h5 class="modal-title" id="viewLogModalLabel">Detalhes do Log de E-mail</h5>
- <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
- </div>
- <div class="modal-body">
- <!-- Conteúdo do log será carregado aqui -->
- <div id="logDetailsContent">
- <p>Carregando...</p>
- </div>
- </div>
- <div class="modal-footer">
- <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
- </div>
- </div>
- </div>
-</div>
-
 {% endblock %}
 
 {% block scripts %}
 {{ super() }}
-<script>
-document.addEventListener('DOMContentLoaded', function () {
- const viewLogModal = document.getElementById('viewLogModal');
- viewLogModal.addEventListener('show.bs.modal', function (event) {
- // Botão que acionou o modal
- const button = event.relatedTarget;
- // Extrai o ID do log do atributo data-log-id
- const logId = button.getAttribute('data-log-id');
- // Elemento onde o conteúdo do log será carregado
- const modalBodyContent = viewLogModal.querySelector('#logDetailsContent');
-
- // Carregar conteúdo via AJAX
- modalBodyContent.innerHTML = '<p>Carregando...</p>'; // Mostrar um loader
-
- fetch(`/logs_email/${logId}/dados_json`)
- .then(response => {
- if (!response.ok) {
- // Tentar ler como texto para ver a mensagem de erro do servidor
- return response.text().then(text => {
- throw new Error(`HTTP error! status: ${response.status}, body: ${text}`);
- });
- }
- return response.json();
- })
- .then(data => {
- if (data.success && data.log) {
-                    const log = data.log;
-                    let contentHtml = `
-                        <p><strong>Horário do Disparo:</strong> ${log.horario_disparo || 'N/D'}</p>
-                        <p><strong>Status:</strong> <span class="badge bg-${log.status === 'sucesso' ? 'success' : 'danger'}">${log.status || 'N/D'}</span></p>
-                        <p><strong>Remetente:</strong> ${log.email_remetente || 'N/D'}</p>
-                        <p><strong>Destinatário:</strong> ${log.email_destinatario || 'N/D'}</p>
-                        ${log.email_cc ? `<p><strong>CC:</strong> ${log.email_cc}</p>` : ''}
-                        <p><strong>Assunto:</strong> ${log.assunto || 'Sem Assunto'}</p>
-                        <p><strong>Cliente:</strong> ${log.cliente_nome || 'Cliente Removido'}</p>
-                         <p><strong>Boleto:</strong> ${log.boleto_descricao || 'Boleto Removido'} (Vencimento: ${log.boleto_data_vencimento || 'N/D'})</p>
-                        ${log.detalhes ? `<p><strong>Detalhes:</strong> ${log.detalhes}</p>` : ''}
-                        <hr>
-                        <h6>Conteúdo do E-mail:</h6>
-                        <div class="border p-3" style="max-height: 400px; overflow-y: auto;">${log.mensagem_corpo || 'Conteúdo vazio.'}</div>
-                    `;
-                    modalBodyContent.innerHTML = contentHtml;
-                } else {
-                    modalBodyContent.innerHTML = `<p class="text-danger">Erro ao carregar detalhes do log: ${data.message || 'Erro desconhecido'}</p>`;
-                    console.error('Erro ao carregar detalhes do log:', data.message);
-                }
-            })
-            .catch(error => {
-                modalBodyContent.innerHTML = '<p class="text-danger">Erro de rede ou servidor ao carregar detalhes do log.</p>';
-                console.error('Erro na requisição AJAX:', error);
-            });
-    });
-});
-</script>
 {% endblock %}
 
 <!-- Modal para Visualizar Log (Conteúdo será carregado via AJAX) -->
