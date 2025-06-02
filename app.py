@@ -1074,6 +1074,7 @@ def enviar_email_cobranca(boleto_id_interno):
                 status='sucesso',
                 cliente_id=cliente.id,
                 boleto_id=boleto.id,
+ data_boleto=boleto.data_vencimento, # <-- Adicionado aqui
                 detalhes="E-mail enviado com sucesso."
             )
             db.session.add(novo_log)
@@ -1096,6 +1097,7 @@ def enviar_email_cobranca(boleto_id_interno):
                 status='falha_autenticacao',
                 cliente_id=cliente.id,
                 boleto_id=boleto.id,
+ data_boleto=boleto.data_vencimento, # <-- Adicionado aqui
                 detalhes=f"Falha de autenticação: {e_auth}"
             )
             db.session.add(novo_log)
@@ -1116,6 +1118,7 @@ def enviar_email_cobranca(boleto_id_interno):
                 status='falha_conexao',
                 cliente_id=cliente.id,
                 boleto_id=boleto.id,
+ data_boleto=boleto.data_vencimento, # <-- Adicionado aqui
                 detalhes=f"Servidor desconectado: {e_dc}"
             )
             db.session.add(novo_log)
@@ -1136,6 +1139,7 @@ def enviar_email_cobranca(boleto_id_interno):
                 status='falha_smtp',
                 cliente_id=cliente.id,
                 boleto_id=boleto.id,
+ data_boleto=boleto.data_vencimento, # <-- Adicionado aqui
                 detalhes=f"Erro SMTP: {e_smtp}"
             )
             db.session.add(novo_log)
@@ -1156,6 +1160,7 @@ def enviar_email_cobranca(boleto_id_interno):
                 status='falha_dns',
                 cliente_id=cliente.id,
                 boleto_id=boleto.id,
+ data_boleto=boleto.data_vencimento, # <-- Adicionado aqui
                 detalhes=f"Erro de resolução de endereço: {e_gaierror}"
             )
              db.session.add(novo_log)
@@ -1176,6 +1181,7 @@ def enviar_email_cobranca(boleto_id_interno):
                 status='falha_geral',
                 cliente_id=cliente.id,
                 boleto_id=boleto.id,
+ data_boleto=boleto.data_vencimento, # <-- Adicionado aqui
                 detalhes=f"Erro geral: {e}"
             )
             db.session.add(novo_log)
