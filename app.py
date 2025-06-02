@@ -761,7 +761,7 @@ def configuracoes_email():
         nome_remetente = request.form.get('nome_remetente', 'Sistema de Cobranças')
         texto_padrao_email = request.form.get('texto_padrao_email') 
         dias_antecedencia_str = request.form.get('dias_antecedencia_vencimento')
-        notificar_atrasados = request.form.get('notificar_atrasados') == 'on' # Capturar o valor do toggle/checkbox
+        notificar_atrasados = 'notificar_atrasados' in request.form # Capturar o valor do toggle/checkbox
         app.logger.debug(f"Valor de 'notificar_atrasados' recebido do formulário: {request.form.get('notificar_atrasados')}")
         app.logger.debug(f"Valor booleano processado para 'notificar_atrasados': {notificar_atrasados}")
         dia_semana_envio = request.form.get('dia_semana_envio')
