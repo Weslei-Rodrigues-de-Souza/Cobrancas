@@ -177,7 +177,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         <p><strong>Status:</strong> <span class="badge bg-${log.status === 'sucesso' ? 'success' : 'danger'}">${log.status || 'N/D'}</span></p>
                         <p><strong>Remetente:</strong> ${log.email_remetente || 'N/D'}</p>
                         <p><strong>Destinatário:</strong> ${log.email_destinatario || 'N/D'}</p>
-                        {% comment %} A coluna CC só será exibida no modal, não na tabela principal {% endcomment %}
+                        {# A coluna CC só será exibida no modal, não na tabela principal #}
                         ${log.email_cc ? `<p><strong>CC:</strong> ${log.email_cc}</p>` : ''}
                         <p><strong>Assunto:</strong> ${log.assunto || 'Sem Assunto'}</p>
                         <p><strong>Cliente:</strong> ${log.cliente_nome || 'Cliente Removido'}</p>
