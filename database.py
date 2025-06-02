@@ -89,7 +89,8 @@ class ConfiguracaoEmail(db.Model):
     dia_semana_envio = db.Column(db.String(20), nullable=True, default='segunda') 
     horario_envio = db.Column(db.Time, nullable=True) 
     dias_antecedencia_vencimento = db.Column(db.Integer, nullable=True, default=3)
- notificar_atrasados = db.Column(db.Boolean, default=False, nullable=False)
+    notificar_atrasados = db.Column(db.Boolean, default=False, nullable=False)
+    chave_api_gemini = db.Column(db.String(255), nullable=True)
 
     def __repr__(self):
         return f'<ConfiguracaoEmail {self.email_remetente}>'
