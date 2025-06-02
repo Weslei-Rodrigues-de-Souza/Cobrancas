@@ -2,173 +2,140 @@
 
 {% block title %}Logs de Envio de E-mail - Sistema de Cobranças{% endblock %}
 
-{% block content %}
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h2>Logs de Envio de E-mail</h2>
-    {# Não há botão de adicionar para logs de email, manter apenas o título #}
-</div>
-{% endblock %}
-
 {% block head_extra %}
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap4.min.css">
 <style>
-    #logsEmailTable .actions-col { white-space: nowrap; }
-    #logsEmailTable .actions-col .btn { margin: 0 2px; }
+  #logsEmailTable .actions-col { white-space: nowrap; }
+  .dataTables_wrapper .dataTables_length,
+  .dataTables_wrapper .dataTables_filter,
+  .dataTables_wrapper .dataTables_info,
+  .dataTables_wrapper .dataTables_paginate {
+      padding-top: 0.5em;
+      padding-bottom: 0.5em;
+  }
 </style>
 {% endblock %}
 
+{% block content %}
+<h1 class="my-4">Logs de Envio de E-mail</h1>
+
 {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}
-        <div class="mt-4">
-        {% for category, message in messages %}
-            <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
-                {{ message }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>
-        {% endfor %}
+  {% if messages %}
+    <div class="mt-4">
+      {% for category, message in messages %}
+        <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+          {{ message }}
+          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
         </div>
-    {% endif %}
+      {% endfor %}
+    </div>
+  {% endif %}
 {% endwith %}
 
-{% if logs %} {# Check if logs list is not empty #}
+{% if logs %}
 <div class="table-responsive">
-    <table id="logsEmailTable" class="table table-striped table-hover table-bordered display" style="width:100%">
-        <thead>
-            <tr>
-                <th>Horário</th>
-                <th>Remetente</th>
-                <th>Destinatário</th>
-                <th>Assunto</th>
-                <th>Status</th>
-                <th>Cliente</th>
-                <th>Boleto</th>
-                <th>Ações</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for log in logs %} {# Iterate directly over the list #}
-            <tr>
-                <td>{{ log.horario_disparo | formatar_horario if log.horario_disparo else 'N/D' }}</td>
-                <td>{{ log.email_remetente or 'N/D' }}</td>
-                <td>{{ log.email_destinatario or 'N/D' }}</td>
-                <td>{{ log.assunto or 'Sem Assunto' }}</td>
-                <td>
-                    {% if log.status == 'sucesso' %}
-                        <span class="badge bg-success">Sucesso</span>
-                    {% elif log.status == 'falha_autenticacao' or log.status == 'falha_conexao' or log.status == 'falha_smtp' or log.status == 'falha_dns' or log.status == 'falha_geral' %}
-                         <span class="badge bg-danger">Falha</span>
-                    {% else %}
-                         <span class="badge bg-secondary">{{ log.status or 'Desconhecido' }}</span>
-                    {% endif %}
-                </td>
-                <td>
-                    {% if log.cliente %}
- <a href="{{ url_for('main.view_cliente', public_id=log.cliente.public_id) }}" target="_blank">{{ log.cliente.nome }}</a>
-                    {% else %}
- Cliente Removido
-                    {% endif %}
-                </td>
-                 <td>
-                    {% if log.boleto %}
-                        <a href="{{ url_for('main.view_cliente', public_id=log.boleto.cliente.public_id) }}#boletos-section">{{ log.boleto.descricao_completa or log.boleto.descricao_base }}</a>
- {% else %}
-                        Boleto Removido
- {% endif %}
-                </td>
-                <td>
-                    <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#viewLogModal" data-log-id="{{ log.id }}">
-                        Visualizar
-                    </button>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+  <table id="logsEmailTable" class="table table-hover table-striped table-bordered">
+    <thead class="thead-dark">
+      <tr>
+        <th>Horário</th>
+        <th>Remetente</th>
+        <th>Destinatário</th>
+        <th>Assunto</th>
+        <th>Status</th>
+        <th>Cliente</th>
+        <th>Boleto</th>
+        <th class="actions-col no-sort">Ações</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for log in logs %}
+      <tr>
+        <td>{{ log.horario_disparo or 'N/D' }}</td>
+        <td>{{ log.email_remetente or 'N/D' }}</td>
+        <td>{{ log.email_destinatario or 'N/D' }}</td>
+        <td>{{ log.assunto or 'Sem Assunto' }}</td>
+        <td>{{ log.status or 'N/D' }}</td>
+        <td>{{ log.cliente.nome if log.cliente else 'Removido' }}</td>
+        <td>{{ log.boleto.codigo if log.boleto else 'Removido' }}</td>
+        <td>
+          <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#viewLogModal" data-log-id="{{ log.id }}">Ver</button>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
 </div>
-
-{# Manual pagination removed #}
-
 {% else %}
-<div class="alert alert-info" role="alert">
-    Nenhum log de envio de e-mail encontrado.
-</div>
+<div class="alert alert-info">Nenhum log encontrado.</div>
 {% endif %}
-{# Fim do bloco content #}
-
-{# O modal agora está fora do bloco content e será incluído no bloco modals do base.html #}
-{% block modals %}
-{{ super() }} {# Inclui qualquer conteúdo de modal do template base #}
-
-<!-- Modal para Visualizar Log (Conteúdo será carregado via AJAX) -->
-<div class="modal fade" id="viewLogModal" tabindex="-1" aria-labelledby="viewLogModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg"> {# Adicionado modal-lg para um modal maior #}
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="viewLogModalLabel">Detalhes do Log de E-mail</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <!-- Conteúdo do log será carregado aqui via AJAX -->
-                <div id="logDetailsContent">
-                    <p>Carregando detalhes do log...</p>
-                </div>
-            </div>
-             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
-             </div>
-        </div>
-    </div>
-</div>
-
 {% endblock %}
 
-{% block scripts %}
-{{ super() }}
+{% block modals %}
+<div class="modal fade" id="viewLogModal" tabindex="-1" aria-labelledby="viewLogModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="viewLogModalLabel">Detalhes do Log</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+      </div>
+      <div class="modal-body" id="logDetailsContent">
+        <p>Carregando...</p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts_extra %}
+<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.8/js/dataTables.bootstrap4.min.js"></script>
 <script>
 $(document).ready(function () {
-    // Inicializa DataTable
+  if ($('#logsEmailTable').length && $.fn.DataTable) {
     $('#logsEmailTable').DataTable({
-        language: { url: "https://cdn.datatables.net/plug-ins/1.13.8/i18n/pt-BR.json" },
-        columnDefs: [
-            { orderable: false, targets: -1 } // Desativa ordenação da coluna Ações
-        ],
-        responsive: true,
-        pageLength: 10
+      language: {
+        url: "https://cdn.datatables.net/plug-ins/1.13.8/i18n/pt-BR.json"
+      },
+      lengthMenu: [[10, 25, 50, -1], [10, 25, 50, "Todos"]],
+      pageLength: 10,
+      paging: true,
+      lengthChange: true,
+      searching: true,
+      ordering: true,
+      info: true,
+      autoWidth: false,
+      responsive: true,
+      columnDefs: [
+        { orderable: false, targets: 'no-sort' }
+      ]
     });
+  }
 
-    // Lógica do modal
-    const viewLogModal = document.getElementById('viewLogModal');
-    viewLogModal.addEventListener('show.bs.modal', function (event) {
-        const button = event.relatedTarget;
-        const logId = button.getAttribute('data-log-id');
-        const modalBodyContent = document.getElementById('logDetailsContent');
-        modalBodyContent.innerHTML = '<p>Carregando...</p>';
+  const viewLogModal = document.getElementById('viewLogModal');
+  viewLogModal.addEventListener('show.bs.modal', function (event) {
+    const button = event.relatedTarget;
+    const logId = button.getAttribute('data-log-id');
+    const modalBodyContent = document.getElementById('logDetailsContent');
+    modalBodyContent.innerHTML = '<p>Carregando...</p>';
 
-        fetch(`/logs_email/${logId}/dados_json`)
-            .then(response => {
-                if (!response.ok) {
-                    return response.text().then(text => {
-                        throw new Error(`Erro ${response.status}: ${text}`);
-                    });
-                }
-                return response.json();
-            })
-            .then(data => {
-                modalBodyContent.innerHTML = `
-                    <strong>Destinatário:</strong> ${data.email_destinatario}<br>
-                    <strong>Assunto:</strong> ${data.assunto}<br>
-                    <strong>Status:</strong> ${data.status}<br>
-                    <strong>Detalhes:</strong> ${data.detalhes || '—'}<br>
-                    <strong>Mensagem:</strong><br><pre>${data.mensagem_corpo}</pre>
-                `;
-            })
-            .catch(error => {
-                modalBodyContent.innerHTML = '<p class="text-danger">Erro ao carregar os dados do log.</p>';
-                console.error('Erro na requisição AJAX:', error);
-            });
-    });
+    fetch(`/logs_email/${logId}/dados_json`)
+      .then(response => response.ok ? response.json() : Promise.reject(response))
+      .then(data => {
+        modalBodyContent.innerHTML = `
+          <strong>Destinatário:</strong> ${data.email_destinatario}<br>
+          <strong>Assunto:</strong> ${data.assunto}<br>
+          <strong>Status:</strong> ${data.status}<br>
+          <strong>Detalhes:</strong> ${data.detalhes || '—'}<br>
+          <strong>Mensagem:</strong><br>
+          <pre>${data.mensagem_corpo || '—'}</pre>
+        `;
+      })
+      .catch(err => {
+        modalBodyContent.innerHTML = '<p class="text-danger">Erro ao carregar dados.</p>';
+        console.error(err);
+      });
+  });
 });
-
 </script>
 {% endblock %}
