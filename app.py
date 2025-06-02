@@ -1028,7 +1028,7 @@ def enviar_email_cobranca(boleto_id_interno):
         if config_email.nome_remetente:
             remetente_formatado = formataddr((config_email.nome_remetente, config_email.email_remetente))
         else:
- remetente_formatado = config_email.email_remetente
+            remetente_formatado = config_email.email_remetente
             
         format_params = {
             'data_vencimento': boleto.data_vencimento.strftime('%d/%m/%Y') if boleto.data_vencimento else "N/D",
