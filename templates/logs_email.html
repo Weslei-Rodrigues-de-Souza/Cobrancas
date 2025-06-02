@@ -94,23 +94,29 @@
     Nenhum log de envio de e-mail encontrado.
 </div>
 {% endif %}
-
-{% endblock %}
 {# Fim do bloco content #}
 
 {# O modal agora está fora do bloco content e será incluído no bloco modals do base.html #}
 {% block modals %}
 {{ super() }} {# Inclui qualquer conteúdo de modal do template base #}
+
 <!-- Modal para Visualizar Log (Conteúdo será carregado via AJAX) -->
 <div class="modal fade" id="viewLogModal" tabindex="-1" aria-labelledby="viewLogModalLabel" aria-hidden="true">
-                <!-- Conteúdo do log será carregado aqui -->
-                 <div id="logDetailsContent">
-                    <p>Carregando...</p>
-                 </div>
+    <div class="modal-dialog modal-lg"> {# Adicionado modal-lg para um modal maior #}
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="viewLogModalLabel">Detalhes do Log de E-mail</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-footer">
+            <div class="modal-body">
+                <!-- Conteúdo do log será carregado aqui via AJAX -->
+                <div id="logDetailsContent">
+                    <p>Carregando detalhes do log...</p>
+                </div>
+            </div>
+             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
-            </div>
+             </div>
         </div>
     </div>
 </div>
@@ -168,7 +174,6 @@ $(document).ready(function() {
         });
     } else {
         console.error("Tabela ou DataTable não está disponível.");
-    });
-});
+    };
 </script>
 {% endblock %}
