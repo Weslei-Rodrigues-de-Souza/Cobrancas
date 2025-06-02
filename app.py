@@ -1241,41 +1241,37 @@ def tarefa_enviar_notificacoes_agendadas():
 # Registro do Blueprint e inicialização do Scheduler e App
 app.register_blueprint(main_bp)
 
-with app.app_context():
-    email_config_inicial = ConfiguracaoEmail.query.first()
-    if email_config_inicial and all([email_config_inicial.horario_envio, 
-                                     email_config_inicial.email_remetente, 
-                                     email_config_inicial.senha_remetente]):
-        try:
-            # Garante que o job não seja adicionado múltiplas vezes se já existir
-            if scheduler.get_job('job_enviar_notificacoes_agendadas_id'):
-                scheduler.remove_job('job_enviar_notificacoes_agendadas_id')
-                app.logger.info("APScheduler: Job existente 'job_enviar_notificacoes_agendadas_id' removido para ser recriado.")
-
-            scheduler.add_job(func=tarefa_enviar_notificacoes_agendadas, 
-                              trigger=CronTrigger(hour=email_config_inicial.horario_envio.hour, 
-                                                  minute=email_config_inicial.horario_envio.minute, 
-                                                  timezone=scheduler.timezone), 
-                              id='job_enviar_notificacoes_agendadas_id', 
-                              name='Enviar notificações agendadas de cobrança', 
-                              replace_existing=True) # replace_existing é importante
-            app.logger.info(f"APScheduler: Job 'job_enviar_notificacoes_agendadas_id' agendado/reagendado na inicialização para as {email_config_inicial.horario_envio.strftime('%H:%M')}.")
-        
-        except Exception as e: 
-            app.logger.error(f"APScheduler: Erro ao agendar/reagendar job na inicialização: {e}", exc_info=True)
-    else: 
-        app.logger.info("APScheduler: Horário de envio ou credenciais Gmail não definidas na tabela ConfiguracaoEmail. Job de notificações não agendado.")
-
 if not scheduler.running:
     try:
         scheduler.start()
         app.logger.info("APScheduler: Agendador iniciado.")
         atexit.register(lambda: scheduler.shutdown())
-    except Exception as e: 
+    except Exception as e:
         app.logger.error(f"APScheduler: Falha ao iniciar agendador: {e}", exc_info=True)
 
 with app.app_context():
     db.create_all()
-    
+
+    email_config_inicial = ConfiguracaoEmail.query.first()
+    if email_config_inicial and all([email_config_inicial.horario_envio,
+                                     email_config_inicial.email_remetente,
+                                     email_config_inicial.senha_remetente]):
+        try:
+            # Garante que o job não seja adicionado múltiplas vezes se já existir
+            if scheduler.get_job('job_enviar_notificacoes_agendadas_id'):
+                scheduler.remove_job('job_enviar_notificacoes_agendadas_id') # removedor
+                app.logger.info("APScheduler: Job existente 'job_enviar_notificacoes_agendadas_id' removido para ser recriado.")
+            scheduler.add_job(func=tarefa_enviar_notificacoes_agendadas,
+                              trigger=CronTrigger(hour=email_config_inicial.horario_envio.hour,
+                                                  minute=email_config_inicial.horario_envio.minute,
+                                                  timezone=scheduler.timezone),
+                              id='job_enviar_notificacoes_agendadas_id',
+                              name='Enviar notificações agendadas de cobrança',
+                              replace_existing=True) # replace_existing é importante
+            app.logger.info(f"APScheduler: Job 'job_enviar_notificacoes_agendadas_id' agendado/reagendado na inicialização para as {email_config_inicial.horario_envio.strftime('%H:%M')}.")
+        except Exception as e:
+            app.logger.error(f"APScheduler: Erro ao agendar/reagendar job na inicialização: {e}", exc_info=True)
+    else:
+        app.logger.info("APScheduler: Horário de envio ou credenciais Gmail não definidas na tabela ConfiguracaoEmail. Job de notificações não agendado.")
 if __name__ == '__main__':
-    app.run(debug=True, use_reloader=False) 
+    app.run(debug=True, use_reloader=False)
