@@ -1,0 +1,222 @@
+{% extends "base.html" %}
+
+{% block title %}Configurações de E-mail (Gmail) - Sistema de Cobranças{% endblock %}
+
+{% block head_extra %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+<link href="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-bs4.min.css" rel="stylesheet">
+
+<style>
+    .card .card-header {
+        cursor: pointer;
+    }
+    .required-field label::after {
+        content: " *";
+        color: red;
+    }
+    .note-editor.note-frame {
+        border: 1px solid #ced4da;
+    }
+    .note-modal .modal-dialog {
+        z-index: 1051; 
+    }
+    .panel-fullscreen { 
+        z-index: 1060 !important; 
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<h2>Configurações de E-mail (Gmail)</h2>
+<hr>
+
+<form method="POST" action="{{ url_for('main.configuracoes_email') }}" id="configForm">
+    <div class="accordion" id="accordionConfiguracoes">
+
+        <div class="card">
+            <div class="card-header" id="headingAgendamento" data-toggle="collapse" data-target="#collapseAgendamento" aria-expanded="true" aria-controls="collapseAgendamento">
+                <h5 class="mb-0">
+                    <button class="btn btn-link" type="button">
+                        <i class="fas fa-clock"></i> Configurações de Agendamento de Notificações
+                    </button>
+                </h5>
+            </div>
+            <div id="collapseAgendamento" class="collapse show" aria-labelledby="headingAgendamento" data-parent="#accordionConfiguracoes">
+                <div class="card-body">
+                    <div class="form-row">
+                        <div class="form-group col-md-6">
+                            <label for="dias_antecedencia_vencimento">Iniciar notificações quantos dias antes do vencimento?</label>
+                            <input type="number" class="form-control" id="dias_antecedencia_vencimento" name="dias_antecedencia_vencimento" value="{{ form_data.get('dias_antecedencia_vencimento', config.dias_antecedencia_vencimento if config and config.dias_antecedencia_vencimento is not none else 3) }}" min="0">
+                            <small class="form-text text-muted">Ex: 3 (para começar 3 dias antes). 0 para enviar apenas no dia.</small>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group col-md-6">
+                            <label for="dia_semana_envio">Enviar notificações em qual dia da semana?</label>
+                            <select class="form-control" id="dia_semana_envio" name="dia_semana_envio">
+                                {% set dia_selecionado = form_data.get('dia_semana_envio', config.dia_semana_envio if config and config.dia_semana_envio else 'segunda') %}
+                                <option value="todos" {% if dia_selecionado == 'todos' %}selected{% endif %}>Todos os dias da semana</option>
+                                <option value="uteis" {% if dia_selecionado == 'uteis' %}selected{% endif %}>Apenas dias úteis (Seg-Sex)</option>
+                                <option value="segunda" {% if dia_selecionado == 'segunda' %}selected{% endif %}>Segunda-feira</option>
+                                <option value="terca" {% if dia_selecionado == 'terca' %}selected{% endif %}>Terça-feira</option>
+                                <option value="quarta" {% if dia_selecionado == 'quarta' %}selected{% endif %}>Quarta-feira</option>
+                                <option value="quinta" {% if dia_selecionado == 'quinta' %}selected{% endif %}>Quinta-feira</option>
+                                <option value="sexta" {% if dia_selecionado == 'sexta' %}selected{% endif %}>Sexta-feira</option>
+                                <option value="sabado" {% if dia_selecionado == 'sabado' %}selected{% endif %}>Sábado</option>
+                                <option value="domingo" {% if dia_selecionado == 'domingo' %}selected{% endif %}>Domingo</option>
+                            </select>
+                            <small class="form-text text-muted">Define o(s) dia(s) em que o sistema tentará enviar os e-mails agendados.</small>
+                        </div>
+                        <div class="form-group col-md-6">
+                            <label for="horario_envio">Horário preferencial para envio</label>
+                            {% set horario_valor = form_data.get('horario_envio', '') %}
+                            {% if not horario_valor and config and config.horario_envio %}
+                                {% set horario_valor = config.horario_envio.strftime('%H:%M') if config.horario_envio else '09:00' %}
+                            {% elif not horario_valor %}
+                                {% set horario_valor = '09:00' %}
+                            {% endif %}
+                            <input type="time" class="form-control" id="horario_envio" name="horario_envio" value="{{ horario_valor }}">
+                            <small class="form-text text-muted">Horário em que as notificações agendadas serão processadas.</small>
+                        </div>
+                    </div>
+                    <p class="text-muted"><small>Nota: O envio efetivo dependerá da configuração de um agendador de tarefas no servidor.</small></p>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header collapsed" id="headingTemplate" data-toggle="collapse" data-target="#collapseTemplate" aria-expanded="false" aria-controls="collapseTemplate">
+                <h5 class="mb-0">
+                    <button class="btn btn-link" type="button">
+                        <i class="fas fa-envelope-open-text"></i> Template do E-mail de Cobrança
+                    </button>
+                </h5>
+            </div>
+            <div id="collapseTemplate" class="collapse" aria-labelledby="headingTemplate" data-parent="#accordionConfiguracoes">
+                <div class="card-body">
+                    <div class="form-group">
+                        <label for="texto_padrao_email_summernote">Texto Padrão do E-mail</label>
+                        <textarea class="form-control" id="texto_padrao_email_summernote" name="texto_padrao_email" rows="10">{{ form_data.get('texto_padrao_email', config.texto_padrao_email if config and config.texto_padrao_email is not none else "<p>Olá {nome_contato},</p><p>Identificamos que o boleto referente a <strong>{descricao_boleto}</strong>, com vencimento original em <em>{data_vencimento}</em> e valor de <strong>R$ {valor_boleto}</strong>, está se aproximando do vencimento (ou já venceu).</p><p>Caso existam outros débitos vencidos, eles estão listados aqui: {lista_datas_vencidas}.</p><p>Evite a cobrança de juros e multas efetuando o pagamento.</p><p>Qualquer dúvida, estamos à disposição.</p><p>Atenciosamente,<br>{nome_remetente_empresa}</p>") }}</textarea>
+                        <small class="form-text text-muted">
+                            Utilize as seguintes tags para personalização (serão substituídas automaticamente):
+                            <ul>
+                                <li><code>{nome_cliente}</code> - Nome da empresa/cliente.</li>
+                                <li><code>{nome_contato}</code> - Nome do contato principal do cliente (ou nome do cliente se não houver contato principal).</li>
+                                <li><code>{data_vencimento}</code> - Data de vencimento do boleto que originou esta notificação.</li>
+                                <li><code>{lista_datas_vencidas}</code> - Lista as datas de vencimento dos boletos já vencidos do cliente (ex: 01/01/2024, 15/01/2024). Exibe "Nenhuma" se não houver.</li>
+                                <li><code>{valor_boleto}</code> - Valor do boleto que originou esta notificação.</li>
+                                <li><code>{id_boleto}</code> - Identificador único do boleto que originou esta notificação.</li>
+                                <li><code>{descricao_boleto}</code> - Descrição completa do boleto que originou esta notificação.</li>
+                                <li><code>{nome_remetente_empresa}</code> - Nome do Remetente/Empresa (configurado abaixo).</li>
+                            </ul>
+                            Use o editor acima para formatar o texto. Imagens coladas/arrastadas serão embutidas no e-mail.
+                        </small>
+                    </div>
+                    <div class="form-group mt-3">
+                        <a href="{{ url_for('main.processar_notificacoes_manualmente') }}" class="btn btn-info">
+                            <i class="fas fa-cogs"></i> Processar Notificações Pendentes Manualmente
+                        </a>
+                        <small class="form-text text-muted">Clique para tentar enviar e-mails para boletos pendentes que se enquadram nos critérios de antecedência de vencimento.</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header collapsed" id="headingSmtp" data-toggle="collapse" data-target="#collapseSmtp" aria-expanded="false" aria-controls="collapseSmtp">
+                <h5 class="mb-0">
+                    <button class="btn btn-link" type="button">
+                        <i class="fab fa-google"></i> Credenciais do Gmail para Envio
+                    </button>
+                </h5>
+            </div>
+            <div id="collapseSmtp" class="collapse" aria-labelledby="headingSmtp" data-parent="#accordionConfiguracoes">
+                <div class="card-body">
+                    <div class="alert alert-info" role="alert">
+                        O sistema está configurado para usar o servidor SMTP do Gmail (<code>smtp.gmail.com</code>, porta <code>587</code> com STARTTLS).
+                        Insira abaixo o seu e-mail Gmail e a Senha de App correspondente.
+                    </div>
+                    <div class="form-group required-field">
+                        <label for="email_remetente_gmail">Seu E-mail Gmail</label>
+                        <input type="email" class="form-control" id="email_remetente_gmail" name="email_remetente_gmail" value="{{ form_data.get('email_remetente_gmail', '') }}" placeholder="seu_email@gmail.com" required>
+                    </div>
+                    <div class="form-group required-field">
+                        <label for="senha_remetente_gmail">Senha de App do Gmail</label>
+                        <input type="password" class="form-control" id="senha_remetente_gmail" name="senha_remetente_gmail" 
+                               placeholder="{{ 'Deixe em branco para manter a senha atual' if form_data.get('senha_configurada') else 'Insira a senha de app de 16 caracteres' }}" 
+                               aria-describedby="senhaHelpBlock">
+                        {% if form_data.get('senha_configurada') %}
+                            <small id="senhaConfiguradaHelp" class="form-text text-success">
+                                <i class="fas fa-check-circle"></i> Uma senha já foi configurada. Preencha este campo apenas se desejar alterá-la.
+                            </small>
+                        {% endif %}
+                        <small id="senhaHelpBlock" class="form-text text-muted">
+                            <strong>Importante:</strong> Se você usa autenticação de dois fatores (2FA) na sua conta Gmail (recomendado), você <strong>precisará</strong> gerar e usar uma "Senha de App".
+                            <a href="https://support.google.com/accounts/answer/185833" target="_blank">Saiba como gerar uma Senha de App aqui.</a>
+                        </small>
+                    </div>
+                     <div class="form-group">
+                        <label for="nome_remetente">Nome do Remetente (Opcional)</label>
+                        <input type="text" class="form-control" id="nome_remetente" name="nome_remetente" value="{{ form_data.get('nome_remetente', 'Sistema de Cobranças') }}" placeholder="Nome da sua empresa ou sistema">
+                        <small class="form-text text-muted">Este nome aparecerá como o remetente do e-mail (campo "De:"). Se deixado em branco, apenas o e-mail será usado.</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div> 
+    <div class="mt-4">
+        <button type="submit" class="btn btn-primary" id="btnSalvarConfig"><i class="fas fa-save"></i> Salvar Configurações</button>
+        <a href="{{ url_for('main.index') }}" class="btn btn-secondary"><i class="fas fa-times"></i> Cancelar</a>
+    </div>
+</form>
+{% endblock %}
+
+{% block scripts_extra %}
+<script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-bs4.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/lang/summernote-pt-BR.js"></script>
+
+<script>
+$(document).ready(function(){
+    $('.collapse').on('show.bs.collapse', function () {
+        var accordionId = $(this).closest('.accordion').attr('id');
+        $('#' + accordionId + ' .collapse.show').not($(this)).collapse('hide');
+    });
+
+    var summernoteEditor = $('#texto_padrao_email_summernote');
+    summernoteEditor.summernote({
+        placeholder: 'Digite o corpo do seu e-mail aqui...',
+        tabsize: 2,
+        height: 350, 
+        lang: 'pt-BR', 
+        toolbar: [
+          ['style', ['style']],
+          ['font', ['bold', 'italic', 'underline', 'strikethrough', 'superscript', 'subscript', 'clear']],
+          ['fontname', ['fontname']],
+          ['fontsize', ['fontsize']], 
+          ['color', ['color']],
+          ['para', ['ul', 'ol', 'paragraph', 'height']], 
+          ['table', ['table']],
+          ['insert', ['link', 'picture', 'video', 'hr']],
+          ['view', ['fullscreen', 'codeview', 'help']]
+        ],
+        fontNames: ['Arial', 'Arial Black', 'Comic Sans MS', 'Courier New', 'Helvetica', 'Impact', 'Tahoma', 'Times New Roman', 'Verdana', 'Georgia', 'Palatino Linotype'],
+        fontNamesIgnoreCheck: ['Arial Black', 'Comic Sans MS', 'Impact', 'Tahoma', 'Times New Roman', 'Verdana', 'Georgia', 'Palatino Linotype'],
+        lineHeights: ['0.2', '0.3', '0.4', '0.5', '0.6', '0.8', '1.0', '1.2', '1.4', '1.5', '2.0', '3.0']
+    });
+
+    $('#configForm').on('submit', function() {
+        if (summernoteEditor.summernote('isEmpty')) {
+            summernoteEditor.val(''); 
+        } else {
+            summernoteEditor.val(summernoteEditor.summernote('code'));
+        }
+        return true; 
+    });
+});
+</script>
+{% endblock %}

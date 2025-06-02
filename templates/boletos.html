@@ -1,0 +1,424 @@
+{% extends "base.html" %}
+
+{% block title %}Lista de Boletos - Sistema de Cobranças{% endblock %}
+
+{% block head_extra %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap4.min.css">
+<style>
+    #boletosTable .actions-col { white-space: nowrap; }
+    #boletosTable .actions-col .btn { margin: 0 2px; }
+    .dataTables_wrapper .dataTables_length,
+    .dataTables_wrapper .dataTables_filter,
+    .dataTables_wrapper .dataTables_info,
+    .dataTables_wrapper .dataTables_paginate {
+        padding-top: 0.5em;
+        padding-bottom: 0.5em;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2>Boletos Registrados</h2>
+    <a href="{{ url_for('main.novo_boleto') }}" class="btn btn-success">Novo Boleto</a>
+</div>
+
+{% if lista_completa_boletos %}
+<div class="table-responsive">
+    <table id="boletosTable" class="table table-hover table-striped table-bordered" style="width:100%">
+        <thead class="thead-dark">
+            <tr>
+                <th>ID</th>
+                <th>Cliente</th>
+                <th>Descrição</th>
+                <th>Valor (R$)</th>
+                <th>Vencimento</th>
+                <th>Status</th>
+                <th>Parcela</th>
+                <th class="actions-col no-sort">Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for boleto in lista_completa_boletos %}
+            <tr>
+                <td>{{ boleto.id }}</td>
+                <td>{{ boleto.cliente.nome }}</td>
+                <td>{{ boleto.descricao_completa }}</td>
+                <td>{{ "%.2f"|format(boleto.valor)|replace('.', ',') }}</td>
+                <td>{{ boleto.data_vencimento.strftime('%d/%m/%Y') }}</td>
+                <td>
+                    {% if boleto.status == 'pago' %}<span class="badge badge-success">PAGO</span>
+                    {% elif boleto.status == 'pendente' %}<span class="badge badge-warning">PENDENTE</span>
+                    {% elif boleto.status == 'cancelado' %}<span class="badge badge-danger">CANCELADO</span>
+                    {% else %}<span class="badge badge-secondary">{{ boleto.status|capitalize }}</span>{% endif %}
+                </td>
+                <td>{{ boleto.parcela_atual }}/{{ boleto.numero_parcelas }}</td>
+                <td class="actions-col text-center">
+                    <button class="btn btn-warning btn-sm btn-editar-boleto-modal-boletoshtml"
+                            data-toggle="modal"
+                            data-target="#modalEdicaoBoleto_BoletosHTML"
+                            data-public-id="{{ boleto.public_id }}">
+                        <i class="fas fa-edit"></i>
+                    </button>
+
+                    <button class="btn btn-danger btn-sm" data-toggle="modal" data-target="#confirmDeleteBoletoModal_{{ boleto.public_id }}" {% if boleto.status == 'pago' %}disabled{% endif %}>
+                        <i class="fas fa-trash"></i>
+                    </button>
+
+                    {% if boleto.numero_parcelas > 1 and boleto.grupo_replicacao_id %}
+                    <button class="btn btn-outline-danger btn-sm" data-toggle="modal" data-target="#confirmDeleteGrupoBoletoModal_{{ boleto.grupo_replicacao_id.replace('-', '') }}" {% if boleto.status == 'pago' %}disabled{% endif %}>
+                        <i class="fas fa-trash-alt"></i> <small>Série</small>
+                    </button>
+                    {% endif %}
+                </td>
+            </tr>
+
+            <div class="modal fade" id="confirmDeleteBoletoModal_{{ boleto.public_id }}" tabindex="-1">
+              <div class="modal-dialog modal-sm">
+                <div class="modal-content">
+                  <div class="modal-header">
+                    <h5 class="modal-title">Confirmar Exclusão</h5>
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                  </div>
+                  <div class="modal-body">
+                    Tem certeza que deseja excluir o boleto de {{ boleto.data_vencimento.strftime('%d/%m/%Y') }} no valor de R$ {{ "%.2f"|format(boleto.valor)|replace('.', ',') }}?
+                  </div>
+                  <div class="modal-footer">
+                    <button class="btn btn-secondary btn-sm" data-dismiss="modal">Cancelar</button>
+                    <form action="{{ url_for('main.excluir_boleto', public_id=boleto.public_id) }}" method="POST">
+                      <button type="submit" class="btn btn-danger btn-sm">Excluir</button>
+                    </form>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {% if boleto.numero_parcelas > 1 and boleto.grupo_replicacao_id %}
+            <div class="modal fade" id="confirmDeleteGrupoBoletoModal_{{ boleto.grupo_replicacao_id.replace('-', '') }}" tabindex="-1">
+              <div class="modal-dialog modal-sm">
+                <div class="modal-content">
+                  <div class="modal-header">
+                    <h5 class="modal-title">Excluir Série</h5>
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                  </div>
+                  <div class="modal-body">
+                    Tem certeza que deseja excluir <strong>toda a série</strong> de boletos ({{ boleto.numero_parcelas }} parcelas)?
+                  </div>
+                  <div class="modal-footer">
+                    <button class="btn btn-secondary btn-sm" data-dismiss="modal">Cancelar</button>
+                    <form action="{{ url_for('main.excluir_grupo_boletos', grupo_id=boleto.grupo_replicacao_id) }}" method="POST">
+                      <button type="submit" class="btn btn-danger btn-sm">Excluir Série</button>
+                    </form>
+                  </div>
+                </div>
+              </div>
+            </div>
+            {% endif %}
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<p class="text-muted">Nenhum boleto registrado.</p>
+{% endif %}
+
+<div class="modal fade" id="modalEdicaoBoleto_BoletosHTML" tabindex="-1" role="dialog" aria-labelledby="modalEdicaoBoleto_BoletosHTMLLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg" role="document">
+    <div class="modal-content">
+      <form id="formEdicaoBoleto_BoletosHTML" method="POST">
+          <div class="modal-header">
+            <h5 class="modal-title" id="modalEdicaoBoleto_BoletosHTMLLabel">Editar Boleto</h5>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Fechar">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+          <div class="modal-body" id="modalBoletoContent_BoletosHTML">
+            <p class="text-center"><i class="fas fa-spinner fa-spin"></i> Carregando formulário...</p>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-primary" id="btnSalvarBoleto_BoletosHTML">Salvar Alterações</button>
+          </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts_extra %}
+<script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.8/js/dataTables.bootstrap4.min.js"></script>
+<script>
+var numeroParcelasOriginalValue_BoletosHTML = '1';
+
+function formatarValorInputModal_BoletosHTML(inputElement) {
+    if (!inputElement) return;
+    let value = inputElement.value; value = value.replace(/\D/g, '');
+    if (value.length > 1 && value.startsWith('0')) { let tempValue = value; while(tempValue.startsWith('0') && tempValue.length > 1) { tempValue = tempValue.substring(1); } value = tempValue; }
+    if (value === '') { inputElement.value = ''; return; } let intValue = parseInt(value, 10);
+    if (isNaN(intValue)) { inputElement.value = ''; return; } let reais = Math.floor(intValue / 100);
+    let centavos = intValue % 100; let formattedReais = reais.toLocaleString('pt-BR');
+    let formattedCentavos = centavos.toString().padStart(2, '0'); inputElement.value = formattedReais + ',' + formattedCentavos;
+}
+
+function configurarLogicaParcelas_BoletosHTML() {
+    const modalContent = $('#modalBoletoContent_BoletosHTML');
+    const periodicidadeSelectModal = modalContent.find('#modal_boleto_periodicidade_replicacao_form');
+    const numeroParcelasInputModal = modalContent.find('#modal_boleto_numero_parcelas_form');
+
+    if (!periodicidadeSelectModal.length || !numeroParcelasInputModal.length) {
+        return;
+    }
+
+    if (periodicidadeSelectModal.val() !== 'unico') {
+        numeroParcelasOriginalValue_BoletosHTML = numeroParcelasInputModal.val() || '1';
+    } else {
+        numeroParcelasOriginalValue_BoletosHTML = '1';
+    }
+
+    if (numeroParcelasInputModal.prop('readonly') && !$('body').hasClass('boleto-pago-modal-boletoshtml-active')) {
+         numeroParcelasInputModal.attr('data-readonly-serie-modal-boletoshtml', 'true');
+    }
+
+    function toggleNumeroParcelasModalInterno_BoletosHTML() {
+        if (!periodicidadeSelectModal.length || !numeroParcelasInputModal.length) return;
+        const isReadOnlyForSerieModal = numeroParcelasInputModal.is('[data-readonly-serie-modal-boletoshtml="true"]');
+        const isPagoModal = modalContent.find('#modal_boleto_is_pago_checkbox_loaded').is(':checked');
+
+
+        if (periodicidadeSelectModal.val() === 'unico') {
+            if (!isReadOnlyForSerieModal && !isPagoModal) numeroParcelasInputModal.val(1);
+            numeroParcelasInputModal.prop('readonly', true);
+            numeroParcelasInputModal.prop('disabled', true);
+        } else {
+            if (!isReadOnlyForSerieModal && !isPagoModal) {
+                 numeroParcelasInputModal.val(numeroParcelasOriginalValue_BoletosHTML > 1 ? numeroParcelasOriginalValue_BoletosHTML : 1);
+                 numeroParcelasInputModal.prop('readonly', false);
+                 numeroParcelasInputModal.prop('disabled', false);
+            } else if (isReadOnlyForSerieModal && !isPagoModal) {
+                numeroParcelasInputModal.prop('readonly', true);
+                numeroParcelasInputModal.prop('disabled', true);
+            }
+            if(isPagoModal){
+                numeroParcelasInputModal.prop('readonly', true);
+                numeroParcelasInputModal.prop('disabled', true);
+            }
+        }
+    }
+
+    periodicidadeSelectModal.off('change.boletoshtml').on('change.boletoshtml', function() {
+        const isPagoModal = modalContent.find('#modal_boleto_is_pago_checkbox_loaded').is(':checked');
+        if ($(this).val() !== 'unico' && !numeroParcelasInputModal.is('[data-readonly-serie-modal-boletoshtml="true"]') && !isPagoModal) {
+             numeroParcelasOriginalValue_BoletosHTML = numeroParcelasInputModal.val() || '1';
+        }
+        toggleNumeroParcelasModalInterno_BoletosHTML();
+    });
+    toggleNumeroParcelasModalInterno_BoletosHTML();
+}
+
+function atualizarCamposPorStatusPago_BoletosHTML() {
+    const modalContent = $('#modalBoletoContent_BoletosHTML');
+    const formFields = modalContent;
+    const isPagoCheckbox = formFields.find('#modal_boleto_is_pago_checkbox_loaded');
+
+    if (!isPagoCheckbox.length) return;
+
+    const isPago = isPagoCheckbox.is(':checked');
+    
+    $('body').toggleClass('boleto-pago-modal-boletoshtml-active', isPago);
+
+    formFields.find('#modal_boleto_cliente_id_form, #modal_boleto_descricao_base_form, #modal_boleto_valor_form, #modal_boleto_data_vencimento_form, #modal_boleto_periodicidade_replicacao_form, #modal_boleto_numero_parcelas_form')
+        .prop('readonly', isPago);
+    formFields.find('#modal_boleto_cliente_id_form, #modal_boleto_periodicidade_replicacao_form').prop('disabled', isPago);
+    
+    const clienteIdOriginal = formFields.find('#modal_boleto_cliente_id_form option:selected').val();
+    if (formFields.find('#cliente_id_hidden_se_pago_modal').length) {
+        formFields.find('#cliente_id_hidden_se_pago_modal').val(isPago ? clienteIdOriginal : '');
+    }
+
+    const periodicidadeOriginal = formFields.find('#modal_boleto_periodicidade_replicacao_form option:selected').val();
+    if (formFields.find('#periodicidade_replicacao_hidden_se_readonly_modal').length) {
+        formFields.find('#periodicidade_replicacao_hidden_se_readonly_modal').val(isPago ? periodicidadeOriginal : '');
+    }
+    
+    const numParcelasOriginal = formFields.find('#modal_boleto_numero_parcelas_form').val();
+    if (formFields.find('#numero_parcelas_hidden_se_readonly_modal').length) {
+        formFields.find('#numero_parcelas_hidden_se_readonly_modal').val(isPago ? numParcelasOriginal : '');
+    }
+    
+    formFields.find('#alertaBoletoPagoModalForm').toggle(isPago);
+
+    const formDoModal = $('#formEdicaoBoleto_BoletosHTML');
+    const boletoData = formDoModal.data('boletoData'); 
+
+    const readonlyParcelas = boletoData ? boletoData.readonly_parcelas : formFields.find('#modal_boleto_numero_parcelas_form').is('[data-readonly-serie-modal-boletoshtml="true"]');
+
+    if (readonlyParcelas && !isPago) {
+        formFields.find('#modal_boleto_periodicidade_replicacao_form, #modal_boleto_numero_parcelas_form').prop('disabled', true);
+        formFields.find('#alertaReadonlyParcelasModalForm').show();
+    } else if (!isPago) {
+        formFields.find('#modal_boleto_periodicidade_replicacao_form, #modal_boleto_numero_parcelas_form').prop('disabled', false);
+        formFields.find('#alertaReadonlyParcelasModalForm').hide();
+    } else { 
+        formFields.find('#alertaReadonlyParcelasModalForm').hide();
+    }
+    configurarLogicaParcelas_BoletosHTML();
+}
+
+
+$(document).ready(function() {
+    var formInModal; 
+
+    $('#boletosTable').DataTable({
+        language: { url: "https://cdn.datatables.net/plug-ins/1.13.8/i18n/pt-BR.json" },
+        lengthMenu: [[10, 25, 50, -1], [10, 25, 50, "Todos"]],
+        pageLength: 10,
+        columnDefs: [{ orderable: false, targets: 'no-sort' }]
+    });
+
+    $('.btn-editar-boleto-modal-boletoshtml').click(function() {
+        const publicId = $(this).data('public-id');
+        const modal = $('#modalEdicaoBoleto_BoletosHTML');
+        const modalContentArea = modal.find('#modalBoletoContent_BoletosHTML');
+        formInModal = modal.find('#formEdicaoBoleto_BoletosHTML'); 
+        const modalTitle = modal.find('#modalEdicaoBoleto_BoletosHTMLLabel');
+        const btnSalvar = modal.find('#btnSalvarBoleto_BoletosHTML'); 
+
+        modalTitle.text('Carregando Boleto...');
+        formInModal.attr('action', `/boletos/${publicId}/editar_ajax`);
+        formInModal.data('publicId', publicId);
+        modalContentArea.html('<p class="text-center"><i class="fas fa-spinner fa-spin"></i> Carregando formulário...</p>');
+        btnSalvar.show(); 
+
+        $.get(`/boletos/${publicId}/form_modal_content`, function(formHtml) {
+            modalContentArea.html(formHtml);
+            modalTitle.text('Editar Boleto (Pub ID: ' + publicId.substring(0,8) + '...)');
+            if (modalContentArea.find('#public_id_boleto_modal_hidden').length) {
+                modalContentArea.find('#public_id_boleto_modal_hidden').val(publicId);
+            }
+
+            $.ajax({
+                url: `/boletos/${publicId}/dados_json`,
+                method: 'GET',
+                success: function(response) {
+                    if (response.boleto) {
+                        const boletoData = response.boleto;
+                        formInModal.data('boletoData', boletoData);
+                        const formFields = modalContentArea;
+                        const isPagoCheckbox = formFields.find('#modal_boleto_is_pago_checkbox_loaded');
+
+                        formFields.find('#modal_boleto_cliente_id_form').val(boletoData.cliente_id);
+                        formFields.find('#modal_boleto_descricao_base_form').val(boletoData.descricao_base);
+                        formFields.find('#modal_boleto_valor_form').val(boletoData.valor);
+                        formatarValorInputModal_BoletosHTML(formFields.find('#modal_boleto_valor_form')[0]);
+
+                        formFields.find('#modal_boleto_data_vencimento_form').val(boletoData.data_vencimento);
+                        formFields.find('#modal_boleto_periodicidade_replicacao_form').val(boletoData.periodicidade_replicacao);
+                        formFields.find('#modal_boleto_numero_parcelas_form').val(boletoData.numero_parcelas);
+
+                        if (isPagoCheckbox.length) {
+                            isPagoCheckbox.prop('checked', boletoData.status === 'pago');
+                            isPagoCheckbox.off('change.boletoshtml_status').on('change.boletoshtml_status', function() {
+                                atualizarCamposPorStatusPago_BoletosHTML();
+                            });
+                            isPagoCheckbox.trigger('change'); 
+                        } else {
+                            console.warn("Checkbox #modal_boleto_is_pago_checkbox_loaded não encontrado.");
+                            const isPago = boletoData.status === 'pago';
+                            $('body').toggleClass('boleto-pago-modal-boletoshtml-active', isPago);
+                             formFields.find('#modal_boleto_cliente_id_form, #modal_boleto_descricao_base_form, #modal_boleto_valor_form, #modal_boleto_data_vencimento_form, #modal_boleto_periodicidade_replicacao_form, #modal_boleto_numero_parcelas_form')
+                                .prop('readonly', isPago);
+                            formFields.find('#modal_boleto_cliente_id_form, #modal_boleto_periodicidade_replicacao_form').prop('disabled', isPago);
+                            btnSalvar.show(); 
+                            formFields.find('#alertaBoletoPagoModalForm').toggle(isPago);
+                            configurarLogicaParcelas_BoletosHTML();
+                        }
+                    } else {
+                        modalContentArea.html('<p class="text-danger">Erro: Dados do boleto não encontrados.</p>');
+                    }
+                },
+                error: function() {
+                    modalContentArea.html('<p class="text-danger">Falha ao buscar dados do boleto.</p>');
+                }
+            });
+        }).fail(function() {
+            modalContentArea.html('<div class="alert alert-danger">Erro ao carregar formulário.</div>');
+        });
+    });
+
+    $('#modalEdicaoBoleto_BoletosHTML').on('hidden.bs.modal', function () {
+        var modal = $(this);
+        if (formInModal && formInModal.length) { 
+            formInModal[0].reset();
+            formInModal.removeData('boletoData');
+            formInModal.removeData('publicId');
+        }
+        modal.find('#modalBoletoContent_BoletosHTML').html('<p class="text-center">Carregando dados do boleto...</p>');
+        $('body').removeClass('boleto-pago-modal-boletoshtml-active');
+    });
+
+
+    $('#formEdicaoBoleto_BoletosHTML').on('submit', function(e) {
+        e.preventDefault();
+        formInModal = $(this); 
+        var url = formInModal.attr('action');
+        
+        var formDataObject = {};
+        new FormData(formInModal[0]).forEach(function(value, key){
+            formDataObject[key] = value;
+        });
+        const isPagoCheckbox = formInModal.find('#modal_boleto_is_pago_checkbox_loaded');
+        if (isPagoCheckbox.length) {
+            formDataObject['is_pago'] = isPagoCheckbox.is(':checked').toString(); 
+        }
+
+        console.log("Tentando salvar boleto (modal boletos.html)...");
+        console.log("URL de submissão:", url);
+        console.log("Dados do formulário (objeto):", formDataObject);
+
+        $.ajax({
+            type: 'POST', url: url, data: formDataObject, 
+            success: function(response) {
+                console.log("Resposta do servidor (tentativa de salvar):", response); // Log da resposta completa
+                if (response && typeof response.success !== 'undefined') { // Verifica se response e response.success existem
+                    if (response.success === true) { // Verifica explicitamente por booleano true
+                        console.log("Sucesso detectado. Tentando fechar modal e recarregar.");
+                        $('#modalEdicaoBoleto_BoletosHTML').modal('hide');
+                        $('.toast-container').append('<div class="toast" role="alert" data-delay="5000" data-autohide="true"><div class="toast-header"><strong class="mr-auto text-success">Sucesso!</strong><button type="button" class="ml-2 mb-1 close" data-dismiss="toast">&times;</button></div><div class="toast-body">' + response.message + '</div></div>');
+                        $('.toast').last().toast('show');
+                        console.log("Modal 'hide' chamado. Configurando timeout para recarregar página.");
+                        setTimeout(function(){
+                            console.log("Executando location.reload().");
+                            location.reload();
+                        }, 1500);
+                    } else {
+                        let serverMessage = response.message || 'O servidor indicou uma falha, mas não forneceu uma mensagem específica.';
+                        console.error("Erro ao salvar retornado pelo servidor (response.success não é true):", serverMessage, "Resposta completa:", response);
+                        $('.toast-container').append('<div class="toast" role="alert" data-delay="7000" data-autohide="true"><div class="toast-header"><strong class="mr-auto text-danger">Erro!</strong><button type="button" class="ml-2 mb-1 close" data-dismiss="toast">&times;</button></div><div class="toast-body">' + serverMessage + '</div></div>');
+                        $('.toast').last().toast('show');
+                    }
+                } else {
+                     console.error("Resposta do servidor inválida ou success não definido:", response);
+                     let serverMessage = 'Resposta inválida do servidor ao tentar salvar.';
+                     if(response && response.message) serverMessage = response.message; // Tenta pegar a mensagem se existir
+                    $('.toast-container').append('<div class="toast" role="alert" data-delay="7000" data-autohide="true"><div class="toast-header"><strong class="mr-auto text-danger">Erro!</strong><button type="button" class="ml-2 mb-1 close" data-dismiss="toast">&times;</button></div><div class="toast-body">' + serverMessage + '</div></div>');
+                    $('.toast').last().toast('show');
+                }
+            },
+            error: function(jqXHR, textStatus, errorThrown) {
+                console.error("Erro crítico na requisição AJAX para salvar:");
+                let errorDetail = "Erro de comunicação ao tentar salvar.";
+                if (jqXHR.responseJSON && jqXHR.responseJSON.message) { errorDetail = jqXHR.responseJSON.message; }
+                else if (jqXHR.responseText) { try { const errResp = JSON.parse(jqXHR.responseText); if (errResp && errResp.message) errorDetail = errResp.message; } catch (e) { console.error("Raw error response (not JSON):", jqXHR.responseText);}}
+                console.error("URL:", url); 
+                console.error("Status da requisição:", textStatus);
+                console.error("Erro lançado:", errorThrown);
+                $('.toast-container').append('<div class="toast" role="alert" data-delay="7000" data-autohide="true"><div class="toast-header"><strong class="mr-auto text-danger">Erro!</strong><button type="button" class="ml-2 mb-1 close" data-dismiss="toast">&times;</button></div><div class="toast-body">' + errorDetail + '</div></div>');
+                $('.toast').last().toast('show');
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

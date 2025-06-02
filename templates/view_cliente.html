@@ -1,0 +1,428 @@
+{% extends "base.html" %}
+
+{% block title %}Detalhes do Cliente: {{ cliente.nome }} - Sistema de Cobranças{% endblock %}
+
+{% block head_extra %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap4.min.css">
+<style>
+    .btn-xs { padding: .1rem .3rem; font-size: .75rem; line-height: 1.5; border-radius: .2rem; }
+    .accordion-boletos .card-header { padding: .5rem 1rem; }
+    .accordion-boletos .btn-link { font-weight: 500; color: #002561; text-decoration: none; width: 100%; text-align: left; }
+    .accordion-boletos .btn-link:hover { text-decoration: underline; }
+    .table-boletos-accordion th, .table-boletos-accordion td { font-size: 0.9em; }
+    .boleto-pago-row-accordion td {}
+    #contatosTable_wrapper .row:first-child, #contatosTable_wrapper .row:last-child {
+        font-size: 0.85rem; /* Menor fonte para controles do DataTable */
+    }
+    #contatosTable_length select, #contatosTable_filter input {
+        font-size: 0.85rem;
+        padding: 0.2rem 0.4rem;
+        height: calc(1.5em + .5rem + 2px); /* Ajusta altura */
+    }
+    .modal-footer .btn + .btn { /* Adiciona margem entre botões no rodapé do modal */
+        margin-left: .25rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2>Detalhes do Cliente: {{ cliente.nome }}</h2>
+    <div>
+        <a href="{{ url_for('main.editar_cliente', public_id=cliente.public_id) }}" class="btn btn-warning"><i class="fas fa-edit"></i> Editar Cliente</a>
+        <a href="{{ url_for('main.listar_clientes') }}" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Voltar para Lista</a>
+    </div>
+</div>
+<hr>
+
+<div class="card mb-4">
+  <div class="card-header"><h5><i class="fas fa-user-tie"></i> Informações do Cliente</h5></div>
+  <div class="card-body">
+    <dl class="row">
+      <dt class="col-sm-3">ID (Interno):</dt><dd class="col-sm-9">{{ cliente.id }}</dd>
+      <dt class="col-sm-3">ID Público:</dt><dd class="col-sm-9">{{ cliente.public_id }}</dd>
+      <dt class="col-sm-3">Nome:</dt><dd class="col-sm-9">{{ cliente.nome }}</dd>
+      <dt class="col-sm-3">E-mail Principal:</dt><dd class="col-sm-9" id="clienteEmailPrincipalDisplay">{{ cliente.email_principal or 'N/D (defina um contato principal)' }}</dd>
+      <dt class="col-sm-3">Telefone Principal:</dt><dd class="col-sm-9" id="clienteTelefonePrincipalDisplay">{{ cliente.telefone_principal or 'N/D (defina um contato principal)' }}</dd>
+    </dl>
+  </div>
+</div>
+
+<div class="card mb-4">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <h5><i class="fas fa-address-book"></i> Contatos Associados</h5>
+    <button type="button" class="btn btn-success btn-sm" data-toggle="modal" data-target="#modalGerenciarContato" data-action="novo">
+        <i class="fas fa-plus"></i> Adicionar Contato
+    </button>
+  </div>
+  <div class="card-body">
+    <div class="table-responsive">
+      <table id="contatosTable" class="table table-sm table-hover table-bordered" style="width:100%">
+        <thead class="thead-light"><tr>
+          <th>Nome</th><th>E-mail</th><th>Telefone</th><th>Principal?</th><th class="actions-col no-sort">Ações</th>
+        </tr></thead>
+        <tbody id="listaContatosBody">
+        {% for contato in cliente.contatos %}
+        <tr id="contatoRow-{{ contato.id }}">
+          <td>{{ contato.nome }}</td>
+          <td>{{ contato.email or '-' }}</td>
+          <td>{{ contato.telefone or '-' }}</td>
+          <td class="is-principal-cell">{% if contato.is_principal %}<span class="badge badge-success">Sim</span>{% else %}<span class="badge badge-secondary">Não</span>{% endif %}</td>
+          <td class="actions-col">
+            <button type="button" class="btn btn-warning btn-xs btn-abrir-modal-contato" 
+                    data-toggle="modal" data-target="#modalGerenciarContato"
+                    data-contato-id="{{ contato.id }}"
+                    data-nome="{{ contato.nome }}"
+                    data-email="{{ contato.email or '' }}"
+                    data-telefone="{{ contato.telefone or '' }}"
+                    data-is-principal="{{ 'true' if contato.is_principal else 'false' }}"
+                    data-action="editar"
+                    title="Editar Contato">
+                <i class="fas fa-edit"></i>
+            </button>
+            <button type="button" class="btn btn-danger btn-xs btn-excluir-contato" data-contato-id="{{ contato.id }}" data-contato-nome="{{ contato.nome }}" title="Excluir Contato"><i class="fas fa-trash"></i></button>
+          </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if not cliente.contatos %}
+      <p class="text-muted" id="semContatosMsg">Nenhum contato associado.</p>
+    {% endif %}
+  </div>
+</div>
+
+<div class="modal fade" id="modalGerenciarContato" tabindex="-1" role="dialog" aria-labelledby="modalGerenciarContatoLabel" aria-hidden="true">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <form id="formGerenciarContato">
+        <div class="modal-header">
+          <h5 class="modal-title" id="modalGerenciarContatoLabel">Gerenciar Contato</h5>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" name="cliente_public_id" value="{{ cliente.public_id }}">
+          <input type="hidden" id="modal_contato_id" name="contato_id"> <div class="form-group required-field">
+            <label for="modal_contato_nome">Nome do Contato</label>
+            <input type="text" class="form-control" id="modal_contato_nome" name="nome_contato" required>
+          </div>
+          <div class="form-group">
+            <label for="modal_contato_email">E-mail</label>
+            <input type="email" class="form-control" id="modal_contato_email" name="email_contato">
+          </div>
+          <div class="form-group">
+            <label for="modal_contato_telefone">Telefone</label>
+            <input type="text" class="form-control" id="modal_contato_telefone" name="telefone_contato">
+          </div>
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" value="true" id="modal_contato_is_principal" name="is_principal">
+            <label class="form-check-label" for="modal_contato_is_principal">
+              Marcar como Contato Principal?
+            </label>
+            <small class="form-text text-muted">Se marcado, o e-mail e telefone deste contato se tornarão os principais do cliente.</small>
+          </div>
+          <div id="modalGerenciarContatoErros" class="alert alert-danger mt-3" style="display: none;"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary" id="btnSalvarContatoModal">Salvar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="confirmDeleteContatoModalGenerico" tabindex="-1" role="dialog">
+  <div class="modal-dialog modal-sm" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Confirmar Exclusão</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        Tem certeza que deseja excluir o contato "<span id="nomeContatoParaExcluir"></span>"?
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Cancelar</button>
+        <form id="formExcluirContatoGenerico" method="POST" style="display:inline;">
+          <button type="submit" class="btn btn-danger btn-sm">Excluir</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<div class="card">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <h5><i class="fas fa-file-invoice-dollar"></i> Boletos Associados</h5>
+    <a href="{{ url_for('main.novo_boleto', cliente_id=cliente.id, redirect_to_client_public_id=cliente.public_id) }}" class="btn btn-info btn-sm"><i class="fas fa-plus"></i> Adicionar Boleto</a>
+  </div>
+  <div class="card-body">
+    {% if boletos_agrupados_lista %}
+    <div class="accordion accordion-boletos" id="accordionBoletosCliente">
+      {% for grupo_info in boletos_agrupados_lista %}
+      {% set gid = grupo_info.id_do_grupo.replace('-', '') %}
+      <div class="card">
+        <div class="card-header" id="heading{{ loop.index0 }}">
+          <h5 class="mb-0">
+            <button class="btn btn-link {% if not loop.first %}collapsed{% endif %}" type="button" data-toggle="collapse" data-target="#collapse{{ loop.index0 }}" aria-expanded="{{ 'true' if loop.first else 'false' }}">
+              {% if grupo_info.e_serie %}Série: {{ grupo_info.primeiro_boleto.descricao_base }} ({{ grupo_info.boletos|length }}p) - 1ªV:{{ grupo_info.primeiro_boleto.data_vencimento.strftime('%d/%m/%y') }} V:R${{ "%.2f"|format(grupo_info.primeiro_boleto.valor)|replace('.', ',') }}
+              {% else %}Boleto: {{ grupo_info.primeiro_boleto.descricao_completa }} V:{{ grupo_info.primeiro_boleto.data_vencimento.strftime('%d/%m/%y') }} R${{ "%.2f"|format(grupo_info.primeiro_boleto.valor)|replace('.', ',') }}{% endif %}
+              {% if grupo_info.primeiro_boleto.status == 'pago' %}<span class="badge badge-success ml-2">PAGO</span>{% else %}<span class="badge badge-warning ml-2">PENDENTE</span>{% endif %}
+            </button>
+          </h5>
+        </div>
+        <div id="collapse{{ loop.index0 }}" class="collapse {% if loop.first %}show{% endif %}" data-parent="#accordionBoletosCliente">
+          <div class="card-body">
+            <table class="table table-sm table-hover table-boletos-accordion" style="width:100%">
+              <thead class="thead-light">
+                <tr><th>ID</th><th>Descri&ccedil;&atilde;o</th><th>Valor</th><th>Venc.</th><th>Status</th><th>Parc.</th><th class="actions-col no-sort">A&ccedil;&otilde;es</th></tr>
+              </thead>
+              <tbody>
+              {% for b in grupo_info.boletos %}
+              <tr class="{% if b.status=='pago' %}boleto-pago-row-accordion{% endif %}">
+                <td>{{ b.id }}</td>
+                <td>{{ b.descricao_completa }}</td>
+                <td>{{ "%.2f"|format(b.valor)|replace('.', ',') }}</td>
+                <td>{{ b.data_vencimento.strftime('%d/%m/%y') }}</td>
+                <td>{% if b.status=='pago' %}<span class="badge badge-success">PAGO</span>{% else %}<span class="badge badge-warning">PENDENTE</span>{% endif %}</td>
+                <td>{{ b.parcela_atual }}/{{ b.numero_parcelas }}</td>
+                <td class="actions-col">
+                  <button class="btn btn-warning btn-xs btn-editar-boleto-modal" data-toggle="modal" data-target="#modalEdicaoBoleto" data-public-id="{{ b.public_id }}" data-redirect-client-id="{{ cliente.public_id }}"><i class="fas fa-edit"></i></button>
+                  {% if b.status!='pago' %}
+                  <button class="btn btn-danger btn-xs" data-toggle="modal" data-target="#confirmDeleteBoletoModal{{ b.id }}"><i class="fas fa-trash"></i></button>
+                  <div class="modal fade" id="confirmDeleteBoletoModal{{ b.id }}"><div class="modal-dialog modal-sm"><div class="modal-content">
+                    <div class="modal-header"><h5 class="modal-title">Excluir</h5><button class="close" data-dismiss="modal">&times;</button></div>
+                    <div class="modal-body">Excluir boleto de {{ b.data_vencimento.strftime('%d/%m/%Y') }} R${{ "%.2f"|format(b.valor)|replace('.', ',') }}?</div>
+                    <div class="modal-footer"><button class="btn btn-secondary btn-sm" data-dismiss="modal">Não</button><form action="{{ url_for('main.excluir_boleto', public_id=b.public_id) }}" method="POST" style="display:inline;"><input type="hidden" name="origin" value="view_cliente"><button class="btn btn-danger btn-sm">Sim</button></form></div>
+                  </div></div></div>
+                  {% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+      <p class="text-muted">Nenhum boleto cadastrado.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts_extra %}
+<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.8/js/dataTables.bootstrap4.min.js"></script>
+<script>
+$(document).ready(function() {
+    var contatosDataTable;
+
+    function initializeContatosDataTable() {
+        if ($.fn.DataTable.isDataTable('#contatosTable')) {
+            // Não destruir se já existe, apenas redesenhar ou nada se não houver dados.
+            if ($('#contatosTable tbody tr').not('.dt-empty').length > 0) {
+                 $('#semContatosMsg').hide();
+                 if(contatosDataTable) contatosDataTable.draw(false); // Apenas redesenha
+            } else {
+                if(contatosDataTable) contatosDataTable.clear().draw(); // Limpa se não há mais linhas
+                $('#semContatosMsg').show();
+            }
+            return;
+        }
+        // Só inicializa se houver linhas e não for uma tabela já inicializada
+        if ($('#contatosTable tbody tr').length > 0) {
+            $('#semContatosMsg').hide();
+            contatosDataTable = $('#contatosTable').DataTable({
+                language: { url: "https://cdn.datatables.net/plug-ins/1.13.8/i18n/pt-BR.json" },
+                responsive: true,
+                paging: false, 
+                searching: false, 
+                info: false, 
+                columnDefs: [{ orderable: false, targets: 'no-sort' }],
+                // Evitar que o DataTable adicione uma linha de "Nenhum dado" se o tbody estiver vazio
+                // Isso será controlado pela nossa mensagem #semContatosMsg
+                "fnDrawCallback": function (oSettings) {
+                    if (oSettings.fnRecordsDisplay() === 0) {
+                        $(oSettings.nTableWrapper).hide(); // Esconde o wrapper do DataTable
+                        $('#semContatosMsg').show();
+                    } else {
+                        $(oSettings.nTableWrapper).show();
+                        $('#semContatosMsg').hide();
+                    }
+                }
+            });
+        } else {
+            $('#semContatosMsg').show();
+            if ($('#contatosTable_wrapper').length > 0) { // Se o wrapper do DataTable existe, mas a tabela está vazia
+                 $('#contatosTable_wrapper').hide();
+            }
+        }
+    }
+    initializeContatosDataTable(); 
+
+    $('.table-boletos-accordion').each(function() {
+        $(this).DataTable({
+            paging: true, searching: false, info: false, responsive: true,
+            lengthChange: false, columnDefs: [{ orderable: false, targets: 'no-sort' }]
+        });
+    });
+
+    // Configura o modal para Adicionar ou Editar Contato
+    $('#modalGerenciarContato').on('show.bs.modal', function (event) {
+        var button = $(event.relatedTarget); // Botão que acionou o modal
+        var action = button.data('action');
+        var modal = $(this);
+        var form = modal.find('#formGerenciarContato');
+        form[0].reset();
+        $('#modalGerenciarContatoErros').hide().html('');
+        modal.find('#modal_contato_id').val('');
+
+        if (action === 'novo') {
+            modal.find('.modal-title').text('Adicionar Novo Contato para {{ cliente.nome }}');
+            form.attr('action', "{{ url_for('main.novo_contato', public_id=cliente.public_id) }}");
+            modal.find('#btnSalvarContatoModal').text('Salvar Contato');
+        } else if (action === 'editar') {
+            modal.find('.modal-title').text('Editar Contato');
+            var contatoId = button.data('contato-id');
+            modal.find('#modal_contato_id').val(contatoId);
+            modal.find('#modal_contato_nome').val(button.data('nome'));
+            modal.find('#modal_contato_email').val(button.data('email'));
+            modal.find('#modal_contato_telefone').val(button.data('telefone'));
+            modal.find('#modal_contato_is_principal').prop('checked', button.data('is-principal') === true || button.data('is-principal') === 'true');
+            form.attr('action', "{{ url_for('main.editar_contato', contato_id=0) }}".replace('0', contatoId));
+            modal.find('#btnSalvarContatoModal').text('Salvar Alterações');
+        }
+    });
+
+    // Submissão do formulário de Adicionar/Editar Contato via AJAX
+    $('#formGerenciarContato').on('submit', function(e) {
+        e.preventDefault();
+        var form = $(this);
+        var url = form.attr('action'); 
+        var formData = form.serialize();
+        var $submitButton = form.find('button[type="submit"]');
+        var originalButtonText = $submitButton.html();
+        $submitButton.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Salvando...');
+        var isEditAction = Boolean(form.find('#modal_contato_id').val());
+
+        $.ajax({
+            type: 'POST',
+            url: url,
+            data: formData,
+            dataType: 'json',
+            success: function(response) {
+                if (response.success) {
+                    $('#modalGerenciarContato').modal('hide');
+                    var contatoData = response.contato;
+                    var principalBadge = contatoData.is_principal ? '<span class="badge badge-success">Sim</span>' : '<span class="badge badge-secondary">Não</span>';
+                    var actionsHtml = 
+                        '<button type="button" class="btn btn-warning btn-xs btn-abrir-modal-contato" ' +
+                        'data-toggle="modal" data-target="#modalGerenciarContato" ' +
+                        'data-contato-id="'+ contatoData.id +'" data-nome="'+ contatoData.nome +'" '+
+                        'data-email="'+ (contatoData.email || '') +'" data-telefone="'+ (contatoData.telefone || '') +'" '+
+                        'data-is-principal="'+ contatoData.is_principal.toString() +'" data-action="editar" title="Editar Contato">' +
+                        '<i class="fas fa-edit"></i></button> ' +
+                        '<button type="button" class="btn btn-danger btn-xs btn-excluir-contato" data-contato-id="'+ contatoData.id +'" data-contato-nome="'+ contatoData.nome +'" title="Excluir Contato"><i class="fas fa-trash"></i></button>';
+
+                    if (isEditAction) {
+                        var rowNode = $('#contatoRow-' + contatoData.id);
+                        if (rowNode.length > 0 && contatosDataTable) {
+                            contatosDataTable.row(rowNode).data([
+                                contatoData.nome, contatoData.email, contatoData.telefone, principalBadge, actionsHtml
+                            ]).draw(false);
+                        } else { location.reload(); }
+                    } else {
+                        if (!$('#contatosTable').length || !$.fn.DataTable.isDataTable('#contatosTable')) {
+                             // Se a tabela não existia ou não era DataTable, recarrega.
+                             // Isso é um fallback, o ideal é que initializeContatosDataTable() cuide disso.
+                             location.reload();
+                             return; // Evita processar mais se vai recarregar
+                        }
+                        var addedRowNode = contatosDataTable.row.add([
+                            contatoData.nome, contatoData.email, contatoData.telefone, principalBadge, actionsHtml
+                        ]).draw(false).node();
+                        $(addedRowNode).attr('id', 'contatoRow-' + contatoData.id);
+                    }
+                    
+                    // Atualiza informações do cliente se necessário
+                    if (response.cliente_info) {
+                        $('#clienteEmailPrincipalDisplay').text(response.cliente_info.email_principal);
+                        $('#clienteTelefonePrincipalDisplay').text(response.cliente_info.telefone_principal);
+                    } else if (contatoData.is_principal) { // Se o contato salvo se tornou principal
+                         $('#clienteEmailPrincipalDisplay').text(contatoData.email || 'N/D');
+                         $('#clienteTelefonePrincipalDisplay').text(contatoData.telefone || 'N/D');
+                    }
+
+                    // Atualiza visualmente outros contatos para "Não Principal" se este se tornou principal
+                    if (contatoData.is_principal) {
+                        $('#contatosTable tbody tr').each(function() {
+                            var $row = $(this);
+                            var rowId = $row.attr('id');
+                            if (rowId !== 'contatoRow-' + contatoData.id) {
+                                var $principalCell = $row.find('td.is-principal-cell'); // Adicione a classe .is-principal-cell à TD
+                                if ($principalCell.html().includes('Sim')) {
+                                   $principalCell.html('<span class="badge badge-secondary">Não</span>');
+                                }
+                            }
+                        });
+                    }
+                    initializeContatosDataTable(); // Reavalia a tabela
+
+                    $('.toast-container').append('<div class="toast" role="alert" data-delay="5000" data-autohide="true"><div class="toast-header"><strong class="mr-auto text-success">Sucesso!</strong><button type="button" class="ml-2 mb-1 close" data-dismiss="toast">&times;</button></div><div class="toast-body">' + response.message + '</div></div>');
+                    $('.toast').last().toast('show');
+
+                } else {
+                    var errosHtml = '<ul>';
+                    if (response.errors) {
+                        $.each(response.errors, function(key, value) { errosHtml += '<li>' + value + '</li>'; });
+                    } else { errosHtml += '<li>' + (response.message || 'Erro desconhecido.') + '</li>'; }
+                    errosHtml += '</ul>';
+                    $('#modalGerenciarContatoErros').html(errosHtml).show();
+                }
+            },
+            error: function(jqXHR, textStatus, errorThrown) {
+                console.error("AJAX Error:", textStatus, errorThrown, jqXHR.responseText, jqXHR.status);
+                var errorMsg = "Erro de comunicação ao salvar contato."; 
+                if(jqXHR.responseJSON && jqXHR.responseJSON.message) {
+                    errorMsg = jqXHR.responseJSON.message;
+                } else if (jqXHR.responseText) {
+                    try {
+                        var errResp = JSON.parse(jqXHR.responseText);
+                        if (errResp && errResp.message) errorMsg = errResp.message;
+                        else if (jqXHR.status && jqXHR.statusText && jqXHR.status !== 0) errorMsg = `Erro ${jqXHR.status}: ${jqXHR.statusText}`;
+                    } catch(e) { 
+                        if (jqXHR.status && jqXHR.statusText && jqXHR.status !== 0) errorMsg = `Erro ${jqXHR.status}: ${jqXHR.statusText}`;
+                    }
+                }
+                $('#modalGerenciarContatoErros').html('<ul><li>' + errorMsg + '</li></ul>').show();
+            },
+            complete: function() {
+                $submitButton.prop('disabled', false).html(originalButtonText);
+            }
+        });
+    });
+
+    // Excluir contato
+    $('#contatosTable').on('click', '.btn-excluir-contato', function() {
+        var contatoId = $(this).data('contato-id');
+        var contatoNome = $(this).data('contato-nome');
+        $('#nomeContatoParaExcluir').text(contatoNome);
+        var formAction = "{{ url_for('main.excluir_contato', contato_id=0) }}".replace('0', contatoId);
+        $('#formExcluirContatoGenerico').attr('action', formAction);
+        $('#confirmDeleteContatoModalGenerico').modal('show');
+    });
+});
+</script>
+{% endblock %}

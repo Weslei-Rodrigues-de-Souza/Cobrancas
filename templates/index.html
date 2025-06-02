@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+
+{% block title %}Página Inicial - Sistema de Cobranças{% endblock %}
+
+{% block head_extra %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+<style>
+    .dashboard-card .card-body {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+    }
+    .dashboard-card .card-title {
+        font-size: 1.1rem;
+        color: #495057;
+    }
+    .dashboard-card .card-text-value {
+        font-size: 2.2rem;
+        font-weight: bold;
+        color: #002561; /* Cor principal da navbar */
+    }
+    .dashboard-card .card-text-detail {
+        font-size: 0.9rem;
+        color: #6c757d;
+    }
+    .dashboard-card .fas { /* Ícones dos cards */
+        font-size: 2.5rem;
+        margin-bottom: 15px;
+        color: #002561;
+        opacity: 0.7;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="jumbotron_custom py-4 mb-4 bg-light rounded">
+    <div class="container">
+        <h1 class="display-5">Bem-vindo ao Sistema de Cobranças!</h1>
+        <p class="lead">Gerencie seus clientes, boletos e notificações de forma eficiente.</p>
+    </div>
+</div>
+<hr class="my-4">
+
+<div class="row">
+    {# Card Clientes Cadastrados #}
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-primary shadow h-100 py-2 dashboard-card">
+            <div class="card-body">
+                <i class="fas fa-users"></i>
+                <div class="text-xs font-weight-bold text-primary text-uppercase mb-1 card-title">Clientes Cadastrados</div>
+                <div class="h5 mb-0 font-weight-bold text-gray-800 card-text-value">{{ total_clientes if total_clientes is not none else 0 }}</div>
+                <a href="{{ url_for('main.listar_clientes') }}" class="stretched-link"></a>
+            </div>
+        </div>
+    </div>
+
+    {# Card Boletos Pendentes (Contagem) #}
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-warning shadow h-100 py-2 dashboard-card">
+            <div class="card-body">
+                <i class="fas fa-file-invoice"></i>
+                <div class="text-xs font-weight-bold text-warning text-uppercase mb-1 card-title">Boletos Pendentes</div>
+                <div class="h5 mb-0 font-weight-bold text-gray-800 card-text-value">{{ total_boletos_pendentes if total_boletos_pendentes is not none else 0 }}</div>
+                <a href="{{ url_for('main.listar_boletos') }}" class="stretched-link"></a>
+            </div>
+        </div>
+    </div>
+
+    {# Card Valor em Aberto #}
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-danger shadow h-100 py-2 dashboard-card">
+            <div class="card-body">
+                <i class="fas fa-dollar-sign"></i>
+                <div class="text-xs font-weight-bold text-danger text-uppercase mb-1 card-title">Valor em Aberto</div>
+                <div class="h5 mb-0 font-weight-bold text-gray-800 card-text-value">R$ {{ "%.2f"|format(valor_boletos_aberto|float)|replace('.', ',') }}</div>
+                <a href="{{ url_for('main.listar_boletos') }}" class="stretched-link"></a>
+            </div>
+        </div>
+    </div>
+
+    {# Card Valor Pago #}
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-success shadow h-100 py-2 dashboard-card">
+            <div class="card-body">
+                <i class="fas fa-hand-holding-usd"></i>
+                <div class="text-xs font-weight-bold text-success text-uppercase mb-1 card-title">Valor Recebido</div>
+                <div class="h5 mb-0 font-weight-bold text-gray-800 card-text-value">R$ {{ "%.2f"|format(valor_boletos_pagos|float)|replace('.', ',') }}</div>
+                <a href="{{ url_for('main.listar_boletos') }}" class="stretched-link"></a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+     {# Card Cliente Mais Reincidente #}
+    <div class="col-xl-6 col-md-6 mb-4">
+        <div class="card border-left-info shadow h-100 py-2 dashboard-card">
+            <div class="card-body">
+                <i class="fas fa-user-check"></i>
+                <div class="text-xs font-weight-bold text-info text-uppercase mb-1 card-title">Cliente Mais Reincidente</div>
+                <div class="h5 mb-0 font-weight-bold text-gray-800 card-text-value">{{ cliente_mais_reincidente_nome }}</div>
+                <div class="text-xs text-muted card-text-detail"> ({{ num_cobrancas_reincidente }} cobranças distintas)</div>
+                 {% if cliente_mais_reincidente_nome != "N/D" %}
+                    {# Supondo que você possa encontrar o cliente por nome para obter o public_id.
+                       Isso pode ser melhorado passando o public_id diretamente do app.py se possível.
+                       Por simplicidade, vou omitir o link direto aqui se for complexo achar o public_id só pelo nome.
+                    #}
+                 {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

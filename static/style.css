@@ -1,0 +1,68 @@
+/* static/style.css */
+body {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    font-family: 'Arial', sans-serif;
+}
+
+.container {
+    flex: 1;
+    padding-top: 20px;
+    padding-bottom: 20px;
+}
+
+.footer {
+    background-color: #f8f9fa; /* Cor de fundo suave do Bootstrap */
+    padding: 1rem 0;
+    text-align: center;
+    font-size: 0.9em;
+    border-top: 1px solid #e7e7e7;
+}
+
+.navbar-brand {
+    font-weight: bold;
+}
+
+.table th, .table td {
+    vertical-align: middle;
+}
+
+.actions-col {
+    width: 150px; /* Ajuste conforme necessário para os botões de ação */
+    text-align: center;
+}
+
+.btn-sm {
+    margin-right: 5px;
+}
+
+/* Estilo para abas (tabs) se necessário */
+.nav-tabs .nav-link.active {
+    font-weight: bold;
+    background-color: #e9ecef;
+    border-color: #dee2e6 #dee2e6 #fff;
+}
+
+.tab-content {
+    border: 1px solid #dee2e6;
+    border-top: none;
+    padding: 15px;
+    border-radius: 0 0 .25rem .25rem;
+}
+
+.card-header h5 {
+    margin-bottom: 0;
+}
+
+.form-section-title {
+    margin-top: 20px;
+    margin-bottom: 15px;
+    padding-bottom: 5px;
+    border-bottom: 1px solid #eee;
+}
+
+.required-field label::after {
+    content: " *";
+    color: red;
+}

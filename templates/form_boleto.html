@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+
+{% set page_title = "Editar Boleto" if edit_mode else "Novo Boleto" %}
+{% block title %}{{ page_title }} - Sistema de Cobranças{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2>{{ page_title }}</h2>
+    {% if edit_mode and boleto %}
+        <div>
+            <form action="{{ url_for('main.marcar_status_boleto', public_id=boleto.public_id) }}" method="POST" style="display: inline;">
+                <input type="hidden" name="novo_status" value="{{ 'pendente' if boleto.status == 'pago' else 'pago' }}">
+                {# Adiciona o campo oculto para redirecionamento #}
+                {% if redirect_to_client_public_id %}
+                <input type="hidden" name="redirect_to_client_public_id" value="{{ redirect_to_client_public_id }}">
+                {% endif %}
+
+                {% if boleto.status == 'pendente' %}
+                    <button type="submit" class="btn btn-success"><i class="fas fa-check-circle"></i> Marcar como Pago</button>
+                {% elif boleto.status == 'pago' %}
+                    <button type="submit" class="btn btn-warning"><i class="fas fa-undo"></i> Marcar como Pendente</button>
+                {% endif %}
+            </form>
+        </div>
+    {% endif %}
+</div>
+<hr>
+
+{% if edit_mode and boleto %}
+<div class="mb-3">
+    <strong>Status Atual:</strong> 
+    {% if boleto.status == 'pago' %}<span class="badge badge-success">PAGO</span>{% if boleto.data_pagamento %} (em {{ boleto.data_pagamento.strftime('%d/%m/%Y') }}){% endif %}
+    {% elif boleto.status == 'pendente' %}<span class="badge badge-warning">PENDENTE</span>
+    {% elif boleto.status == 'cancelado' %}<span class="badge badge-danger">CANCELADO</span>
+    {% else %}<span class="badge badge-secondary">{{ boleto.status|capitalize }}</span>{% endif %}
+</div>
+{% endif %}
+
+{# Ação do formulário principal não precisa do redirect_to_client_public_id na URL, pois será enviado como campo oculto #}
+<form method="POST" action="{{ url_for('main.editar_boleto', public_id=public_id) if edit_mode else url_for('main.novo_boleto') }}">
+    {# Adiciona o campo oculto para redirecionamento no formulário principal #}
+    {% if edit_mode and redirect_to_client_public_id %}
+        <input type="hidden" name="redirect_to_client_public_id" value="{{ redirect_to_client_public_id }}">
+    {% endif %}
+
+    <div class="card">
+        <div class="card-header"><h5>Dados do Boleto</h5></div>
+        <div class="card-body">
+            <div class="form-group required-field">
+                <label for="cliente_id">Cliente</label>
+                <select class="form-control" id="cliente_id" name="cliente_id" required {% if edit_mode and boleto.status == 'pago' %}disabled{% endif %}>
+                    <option value="">Selecione um cliente...</option>
+                    {% for cli in clientes %}
+                    <option value="{{ cli.id }}" {% if form_data.get('cliente_id')|int == cli.id %}selected{% endif %}>
+                        {{ cli.nome }} ({{ cli.email_principal }})</option>
+                    {% endfor %}
+                </select>
+                 {% if edit_mode and boleto.status == 'pago' %}<input type="hidden" name="cliente_id" value="{{ boleto.cliente_id }}">{% endif %}
+            </div>
+            <div class="form-group">
+                <label for="descricao_base">Descrição Base do Boleto</label>
+                <input type="text" class="form-control" id="descricao_base" name="descricao_base" value="{{ form_data.get('descricao_base', 'Cobrança referente a serviços prestados') }}" {% if edit_mode and boleto.status == 'pago' %}readonly{% endif %}>
+                <small class="form-text text-muted">Ex: "Mensalidade". Será completada com (Parcela N/M) se houver mais de uma.</small>
+            </div>
+            <div class="form-row">
+                <div class="form-group col-md-6 required-field">
+                    <label for="valor">Valor (R$)</label>
+                    <input type="text" class="form-control" id="valor" name="valor" value="{{ form_data.get('valor', '') }}" placeholder="Ex: 150,00" required {% if edit_mode and boleto.status == 'pago' %}readonly{% endif %}>
+                </div>
+                <div class="form-group col-md-6 required-field">
+                    <label for="data_vencimento">Data de Vencimento (da 1ª Parcela)</label>
+                    <input type="date" class="form-control" id="data_vencimento" name="data_vencimento" value="{{ form_data.get('data_vencimento', '') }}" required {% if edit_mode and boleto.status == 'pago' %}readonly{% endif %}>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group col-md-6 required-field">
+                    <label for="periodicidade_replicacao">Periodicidade da Replicação</label>
+                    <select class="form-control" id="periodicidade_replicacao" name="periodicidade_replicacao" required {% if (edit_mode and readonly_parcelas) or (edit_mode and boleto.status == 'pago') %}disabled{% endif %}>
+                        <option value="unico" {% if form_data.get('periodicidade_replicacao') == 'unico' %}selected{% endif %}>Única (não replicar)</option>
+                        <option value="semanal" {% if form_data.get('periodicidade_replicacao') == 'semanal' %}selected{% endif %}>Semanal</option>
+                        <option value="quinzenal" {% if form_data.get('periodicidade_replicacao') == 'quinzenal' %}selected{% endif %}>Quinzenal</option>
+                        <option value="mensal" {% if form_data.get('periodicidade_replicacao') == 'mensal' or not form_data.get('periodicidade_replicacao') %}selected{% endif %}>Mensal</option>
+                    </select>
+                    <small class="form-text text-muted">Define a frequência das parcelas.</small>
+                     {% if (edit_mode and readonly_parcelas) or (edit_mode and boleto.status == 'pago') %}<input type="hidden" name="periodicidade_replicacao" value="{{ form_data.get('periodicidade_replicacao') }}">{% endif %}
+                </div>
+                <div class="form-group col-md-6 required-field">
+                    <label for="numero_parcelas">Número Total de Parcelas</label>
+                    <input type="number" class="form-control" id="numero_parcelas" name="numero_parcelas" value="{{ form_data.get('numero_parcelas', 1) }}" min="1" required {% if (edit_mode and readonly_parcelas) or (edit_mode and boleto.status == 'pago') %}readonly{% endif %}>
+                    <small class="form-text text-muted">Inclui a primeira. Para periodicidade "Única", será sempre 1.</small>
+                     {% if (edit_mode and readonly_parcelas) or (edit_mode and boleto.status == 'pago') %}<input type="hidden" name="numero_parcelas" value="{{ form_data.get('numero_parcelas') }}">{% endif %}
+                </div>
+            </div>
+             {% if edit_mode and readonly_parcelas and boleto.status != 'pago' %}<div class="alert alert-info mt-2">A periodicidade e o número de parcelas não podem ser alterados para uma série existente.</div>{% endif %}
+             {% if edit_mode and boleto.status == 'pago' %}<div class="alert alert-success mt-2">Este boleto está marcado como PAGO. Para editar, marque-o como pendente.</div>{% endif %}
+        </div>
+    </div>
+    <div class="mt-4">
+        {% if not (edit_mode and boleto.status == 'pago') %}
+        <button type="submit" class="btn btn-primary">
+            {% if edit_mode %}<i class="fas fa-save"></i> Salvar Alterações{% else %}<i class="fas fa-plus-circle"></i> Cadastrar Boleto(s){% endif %}
+        </button>
+        {% endif %}
+        {# O botão Cancelar/Voltar agora verifica se deve voltar para view_cliente ou listar_boletos #}
+        <a href="{{ url_for('main.view_cliente', public_id=redirect_to_client_public_id) if redirect_to_client_public_id else url_for('main.listar_boletos') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> {{ 'Voltar para Cliente' if redirect_to_client_public_id else 'Voltar para Lista' }}
+        </a>
+    </div>
+</form>
+{% endblock %}
+
+{% block head_extra %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+{% endblock %}
+
+{% block scripts_extra %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const valorInput = document.getElementById('valor');
+    if (valorInput) {
+        valorInput.addEventListener('input', function (e) {
+            let value = e.target.value; value = value.replace(/\D/g, ''); 
+            if (value.length > 1 && value.startsWith('0')) { let tempValue = value; while(tempValue.startsWith('0') && tempValue.length > 1) { tempValue = tempValue.substring(1); } value = tempValue; }
+            if (value === '') { e.target.value = ''; return; } let intValue = parseInt(value, 10);
+            if (isNaN(intValue)) { e.target.value = ''; return; } let reais = Math.floor(intValue / 100);
+            let centavos = intValue % 100; let formattedReais = reais.toLocaleString('pt-BR'); 
+            let formattedCentavos = centavos.toString().padStart(2, '0'); e.target.value = formattedReais + ',' + formattedCentavos;
+        });
+        if (valorInput.value) { let event = new Event('input', { bubbles: true }); valorInput.dispatchEvent(event); }
+    }
+    const periodicidadeSelect = document.getElementById('periodicidade_replicacao');
+    const numeroParcelasInput = document.getElementById('numero_parcelas');
+    let numeroParcelasOriginalValue = numeroParcelasInput ? numeroParcelasInput.value : '1';
+    function toggleNumeroParcelas() {
+        if (!periodicidadeSelect || !numeroParcelasInput) return; 
+        const isReadOnlyForSerie = numeroParcelasInput.hasAttribute('data-readonly-serie'); 
+        const isPago = document.body.classList.contains('boleto-pago'); 
+        if (periodicidadeSelect.value === 'unico') {
+            if (!isReadOnlyForSerie && !isPago) numeroParcelasInput.value = 1;
+            numeroParcelasInput.readOnly = true; numeroParcelasInput.disabled = true; 
+        } else {
+            if (!isReadOnlyForSerie && !isPago) { 
+                 numeroParcelasInput.value = numeroParcelasOriginalValue > 1 ? numeroParcelasOriginalValue : 1;
+                 numeroParcelasInput.readOnly = false; numeroParcelasInput.disabled = false;
+            } else if (isReadOnlyForSerie && !isPago) { numeroParcelasInput.readOnly = true; numeroParcelasInput.disabled = true; }
+        }
+    }
+    if (periodicidadeSelect && numeroParcelasInput) {
+        if(periodicidadeSelect.value !== 'unico') { numeroParcelasOriginalValue = numeroParcelasInput.value; } else { numeroParcelasOriginalValue = '1'; }
+        if (numeroParcelasInput.hasAttribute('readonly') && !document.body.classList.contains('boleto-pago')) { numeroParcelasInput.setAttribute('data-readonly-serie', 'true');}
+        periodicidadeSelect.addEventListener('change', function() {
+            if (this.value !== 'unico' && !numeroParcelasInput.hasAttribute('data-readonly-serie') && !document.body.classList.contains('boleto-pago')) {
+                 numeroParcelasOriginalValue = numeroParcelasInput.value || '1'; 
+            }
+            toggleNumeroParcelas();
+        });
+        {% if edit_mode and boleto and boleto.status == 'pago' %} document.body.classList.add('boleto-pago'); {% endif %}
+        toggleNumeroParcelas(); 
+    }
+});
+</script>
+{% endblock %}

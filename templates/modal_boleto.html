@@ -1,0 +1,72 @@
+{# templates/modal_boleto.html #}
+{# Este é um fragmento de formulário, renderizado por uma rota específica #}
+
+<input type="hidden" name="public_id_boleto_modal" id="public_id_boleto_modal_hidden" value="{{ boleto.public_id if boleto and boleto.public_id else form_data.get('public_id', '') }}">
+
+{# NOVO: Checkbox para status PAGO #}
+<div class="form-group form-check mb-3">
+    <input type="checkbox" class="form-check-input" id="modal_boleto_is_pago_checkbox_loaded" name="is_pago">
+    <label class="form-check-label" for="modal_boleto_is_pago_checkbox_loaded">Marcar como Pago</label>
+</div>
+
+<div class="form-group required-field">
+    <label for="modal_boleto_cliente_id_form">Cliente</label>
+    <select class="form-control" id="modal_boleto_cliente_id_form" name="cliente_id" required {% if edit_mode and boleto and boleto.status == 'pago' %}disabled{% endif %}>
+        <option value="">Selecione um cliente...</option>
+        {% for cli in clientes_dropdown %}
+        <option value="{{ cli.id }}" 
+                {% if boleto and boleto.cliente_id == cli.id %}selected
+                {% elif form_data and form_data.get('cliente_id')|int == cli.id %}selected
+                {% endif %}>
+            {{ cli.nome }} ({{ cli.email }})
+        </option>
+        {% endfor %}
+    </select>
+    {% if edit_mode and boleto and boleto.status == 'pago' %}<input type="hidden" name="cliente_id_hidden_se_pago_modal" value="{{ boleto.cliente_id }}">{% endif %}
+</div>
+
+<div class="form-group">
+    <label for="modal_boleto_descricao_base_form">Descrição Base do Boleto</label>
+    <input type="text" class="form-control" id="modal_boleto_descricao_base_form" name="descricao_base" value="{{ boleto.descricao_base if boleto else form_data.get('descricao_base', 'Cobrança referente a serviços prestados') }}" {% if edit_mode and boleto and boleto.status == 'pago' %}readonly{% endif %}>
+    <small class="form-text text-muted">Ex: "Mensalidade". Será completada com (Parcela N/M) se houver mais de uma.</small>
+</div>
+
+<div class="form-row">
+    <div class="form-group col-md-6 required-field">
+        <label for="modal_boleto_valor_form">Valor (R$)</label>
+        <input type="text" class="form-control" id="modal_boleto_valor_form" name="valor" value="{{ boleto.valor|string|replace('.', ',') if boleto and boleto.valor is not none else form_data.get('valor', '') }}" placeholder="Ex: 150,00" required {% if edit_mode and boleto and boleto.status == 'pago' %}readonly{% endif %}>
+    </div>
+    <div class="form-group col-md-6 required-field">
+        <label for="modal_boleto_data_vencimento_form">Data de Vencimento (da 1ª Parcela)</label>
+        <input type="date" class="form-control" id="modal_boleto_data_vencimento_form" name="data_vencimento" value="{{ boleto.data_vencimento.strftime('%Y-%m-%d') if boleto and boleto.data_vencimento else form_data.get('data_vencimento', '') }}" required {% if edit_mode and boleto and boleto.status == 'pago' %}readonly{% endif %}>
+    </div>
+</div>
+
+<div class="form-row">
+    <div class="form-group col-md-6 required-field">
+        <label for="modal_boleto_periodicidade_replicacao_form">Periodicidade da Replicação</label>
+        <select class="form-control" id="modal_boleto_periodicidade_replicacao_form" name="periodicidade_replicacao" required {% if (edit_mode and readonly_parcelas) or (edit_mode and boleto and boleto.status == 'pago') %}disabled{% endif %}>
+            <option value="unico" {% if (boleto.periodicidade_replicacao if boleto else form_data.get('periodicidade_replicacao', 'mensal')) == 'unico' %}selected{% endif %}>Única (não replicar)</option>
+            <option value="semanal" {% if (boleto.periodicidade_replicacao if boleto else form_data.get('periodicidade_replicacao', 'mensal')) == 'semanal' %}selected{% endif %}>Semanal</option>
+            <option value="quinzenal" {% if (boleto.periodicidade_replicacao if boleto else form_data.get('periodicidade_replicacao', 'mensal')) == 'quinzenal' %}selected{% endif %}>Quinzenal</option>
+            <option value="mensal" {% if (boleto.periodicidade_replicacao if boleto else form_data.get('periodicidade_replicacao', 'mensal')) == 'mensal' %}selected{% endif %}>Mensal</option>
+        </select>
+        <small class="form-text text-muted">Define a frequência das parcelas.</small>
+        {% if (edit_mode and readonly_parcelas) or (edit_mode and boleto and boleto.status == 'pago') %}<input type="hidden" name="periodicidade_replicacao_hidden_se_readonly_modal" value="{{ boleto.periodicidade_replicacao if boleto else form_data.get('periodicidade_replicacao', 'mensal') }}">{% endif %}
+    </div>
+    <div class="form-group col-md-6 required-field">
+        <label for="modal_boleto_numero_parcelas_form">Número Total de Parcelas</label>
+        <input type="number" class="form-control" id="modal_boleto_numero_parcelas_form" name="numero_parcelas" value="{{ boleto.numero_parcelas if boleto else form_data.get('numero_parcelas', 1) }}" min="1" required {% if (edit_mode and readonly_parcelas) or (edit_mode and boleto and boleto.status == 'pago') %}readonly{% endif %}>
+        <small class="form-text text-muted">Inclui a primeira. Para periodicidade "Única", será sempre 1.</small>
+        {% if (edit_mode and readonly_parcelas) or (edit_mode and boleto and boleto.status == 'pago') %}<input type="hidden" name="numero_parcelas_hidden_se_readonly_modal" value="{{ boleto.numero_parcelas if boleto else form_data.get('numero_parcelas', 1) }}">{% endif %}
+    </div>
+</div>
+
+<div id="alertaReadonlyParcelasModalForm" class="alert alert-info mt-2" role="alert" style="display: {% if edit_mode and readonly_parcelas and boleto and boleto.status != 'pago' %}block{% else %}none{% endif %};">
+    A periodicidade e o número de parcelas não podem ser alterados para uma série existente.
+</div>
+<div id="alertaBoletoPagoModalForm" class="alert alert-success mt-2" role="alert" style="display: {% if edit_mode and boleto and boleto.status == 'pago' %}block{% else %}none{% endif %};">
+    Este boleto está marcado como PAGO. Para editar os campos, desmarque a opção "Marcar como Pago".
+</div>
+
+{# Os scripts de formatação e lógica de parcelas são chamados pelo JS do boletos.html após este conteúdo ser carregado #}

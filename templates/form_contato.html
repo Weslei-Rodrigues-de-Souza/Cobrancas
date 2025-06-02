@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+
+{% set page_title = "Editar Cliente" if edit_mode else "Novo Cliente" %}
+{% block title %}{{ page_title }} - Sistema de Cobranças{% endblock %}
+
+{% block content %}
+<h2>{{ page_title }}</h2>
+<hr>
+
+<form method="POST" action="{{ url_for('main.editar_cliente', public_id=public_id) if edit_mode else url_for('main.novo_cliente') }}">
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5>Dados da Empresa / Cliente</h5>
+        </div>
+        <div class="card-body">
+            <div class="form-group required-field">
+                <label for="nome_cliente_empresa">Nome Completo / Razão Social</label>
+                <input type="text" class="form-control" id="nome_cliente_empresa" name="nome_cliente_empresa" value="{{ form_data.get('nome_cliente_empresa', cliente.nome if edit_mode else '') }}" required>
+                <small class="form-text text-muted">Este é o nome principal da entidade que está a ser cobrada.</small>
+            </div>
+
+            {# Campos de e-mail e telefone principal do CLIENTE foram removidos daqui.
+               Serão geridos através dos CONTATOS.
+               Se estiver em modo de edição, estes campos podem ser mostrados de forma informativa
+               ou a lógica de edição precisará de ser ajustada para gerir o contato principal.
+               Por agora, focamo-nos no formulário de NOVO cliente.
+            #}
+            {% if edit_mode and cliente %}
+                <div class="form-group">
+                    <label>E-mail Principal do Cliente (informativo):</label>
+                    <input type="text" class="form-control" value="{{ cliente.email_principal if cliente.email_principal else 'Não definido (gerido por contato principal)' }}" readonly>
+                </div>
+                <div class="form-group">
+                    <label>Telefone Principal do Cliente (informativo):</label>
+                    <input type="text" class="form-control" value="{{ cliente.telefone_principal if cliente.telefone_principal else 'Não definido' }}" readonly>
+                </div>
+                 <p><a href="{{ url_for('main.view_cliente', public_id=cliente.public_id) }}#contatos" class="btn btn-sm btn-outline-info">Gerir Contatos Associados</a></p>
+            {% endif %}
+        </div>
+    </div>
+
+    {# Apenas mostrar campos de novo contato no modo de NOVO CLIENTE #}
+    {% if not edit_mode %}
+    <div class="card">
+        <div class="card-header">
+            <h5>Contato Principal (Opcional na Criação)</h5>
+        </div>
+        <div class="card-body">
+            <p class="text-muted"><small>Se preencher os três campos abaixo (Nome, E-mail e Telefone do Contato), este contato será criado como o principal para este cliente. Caso contrário, deverá adicionar um contato principal posteriormente.</small></p>
+            <div class="form-group">
+                <label for="contato_nome">Nome do Contato</label>
+                <input type="text" class="form-control" id="contato_nome" name="contato_nome" value="{{ form_data.get('contato_nome', '') }}">
+            </div>
+            <div class="form-group">
+                <label for="contato_email">E-mail do Contato</label>
+                <input type="email" class="form-control" id="contato_email" name="contato_email" value="{{ form_data.get('contato_email', '') }}">
+            </div>
+            <div class="form-group">
+                <label for="contato_telefone">Telefone do Contato</label>
+                <input type="text" class="form-control" id="contato_telefone" name="contato_telefone" value="{{ form_data.get('contato_telefone', '') }}">
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="mt-4">
+        <button type="submit" class="btn btn-primary" title="{% if edit_mode %}Salvar Alterações{% else %}Cadastrar Cliente{% endif %}">
+            <i class="fas fa-save"></i> {% if edit_mode %}Salvar Alterações{% else %}Cadastrar Cliente{% endif %}
+        </button>
+        <a href="{{ url_for('main.view_cliente', public_id=public_id) if edit_mode and public_id else url_for('main.listar_clientes') }}" class="btn btn-secondary" title="Cancelar">
+            <i class="fas fa-times"></i> Cancelar
+        </a>
+    </div>
+</form>
+{% endblock %}
+
+{% block head_extra %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+{% endblock %}
+```
+
+**Alterações Principais no Canvas `form_cliente.html restruturado`:**
+
+1.  **Campo "Nome Completo / Razão Social":**
+    * O `id` e `name` foram alterados para `nome_cliente_empresa` para maior clareza.
+    * Continua a ser `required`.
+    * O `value` foi ajustado para `{{ form_data.get('nome_cliente_empresa', cliente.nome if edit_mode else '') }}` para preencher corretamente em caso de edição ou repopulação do formulário.
+
+2.  **Remoção dos Campos Diretos do Cliente:**
+    * Os campos `email_principal` e `telefone_principal` (que eram diretamente do `Cliente`) foram removidos da secção "Dados da Empresa / Cliente" para o modo de criação.
+    * No modo de edição (`edit_mode`), estes campos são agora mostrados apenas de forma informativa e como `readonly`, e um link para gerir contactos associados foi adicionado, pois a gestão do e-mail/telefone principal do cliente passará a ser feita através do contacto principal.
+
+3.  **Nova Secção "Contato Principal" (Apenas para Novo Cliente):**
+    * Uma nova `div.card` foi adicionada com o título "Contato Principal (Opcional na Criação)".
+    * Esta secção só aparece se `not edit_mode` (ou seja, ao criar um novo cliente).
+    * Contém os campos:
+        * `contato_nome` (Nome do Contato)
+        * `contato_email` (E-mail do Contato)
+        * `contato_telefone` (Telefone do Contato)
+    * Uma nota explica que se os três campos forem preenchidos, um contacto principal será criado.
+
+**Próximos Passos:**
+
+Agora, o próximo passo crucial é **atualizar a rota `novo_cliente` (e potencialmente `editar_cliente`) no seu ficheiro `app.py`** para:
+1.  Processar o campo `nome_cliente_empresa`.
+2.  Ler os novos campos `contato_nome`, `contato_email`, `contato_telefone`.
+3.  Implementar a lógica de criar um `Cliente` e, condicionalmente, um `Contato` associado como principal, conforme a sua descrição.
+4.  Ajustar a forma como `Cliente.email_principal` e `Cliente.telefone_principal` são preenchidos, possivelmente usando os dados do contacto principal se este for criado.
+
+Quando estiver pronto, posso ajudar a ajustar o `app.p

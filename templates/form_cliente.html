@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+
+{% set page_title = "Editar Cliente" if edit_mode else "Novo Cliente" %}
+{% block title %}{{ page_title }} - Sistema de Cobranças{% endblock %}
+
+{% block content %}
+<h2>{{ page_title }}</h2>
+<hr>
+
+<form method="POST" action="{{ url_for('main.editar_cliente', public_id=public_id) if edit_mode else url_for('main.novo_cliente') }}">
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5>Dados da Empresa / Cliente</h5>
+        </div>
+        <div class="card-body">
+            <div class="form-group required-field">
+                {# MODIFICADO: Label e nome do campo #}
+                <label for="nome_empresa">Razão Social / Nome Fantasia</label>
+                <input type="text" class="form-control" id="nome_empresa" name="nome_empresa" value="{{ form_data.get('nome_empresa', cliente.nome if edit_mode else '') }}" required>
+                <small class="form-text text-muted">Este é o nome principal da entidade que está a ser cobrada.</small>
+            </div>
+
+            {# Campos de e-mail e telefone principal do CLIENTE foram removidos para o modo de NOVO CLIENTE.
+               No modo de EDIÇÃO, mostramos os valores atuais (que são derivados do contato principal). #}
+            {% if edit_mode and cliente %}
+                <div class="form-group">
+                    <label>E-mail Principal do Cliente (definido pelo contato principal):</label>
+                    <input type="text" class="form-control" value="{{ cliente.email_principal if cliente.email_principal else 'Não definido (adicione/edite um contato principal)' }}" readonly
+                           title="Este e-mail é automaticamente preenchido com o e-mail do contato marcado como principal.">
+                </div>
+                <div class="form-group">
+                    <label>Telefone Principal do Cliente (definido pelo contato principal):</label>
+                    <input type="text" class="form-control" value="{{ cliente.telefone_principal if cliente.telefone_principal else 'Não definido' }}" readonly
+                           title="Este telefone é automaticamente preenchido com o telefone do contato marcado como principal.">
+                </div>
+                 <p><a href="{{ url_for('main.view_cliente', public_id=cliente.public_id) }}#contatos" class="btn btn-sm btn-outline-info">Gerir Contatos Associados</a></p>
+            {% endif %}
+        </div>
+    </div>
+
+    {# Mostrar campos para criar um contato principal apenas no modo de NOVO CLIENTE #}
+    {% if not edit_mode %}
+    <div class="card">
+        <div class="card-header">
+            <h5>Dados do Contato Principal (Opcional)</h5>
+        </div>
+        <div class="card-body">
+            <p class="text-muted"><small>Se preencher os três campos abaixo (Nome, E-mail e Telefone do Contato), este contato será criado e automaticamente marcado como o principal para este cliente/empresa.</small></p>
+            <div class="form-group">
+                {# NOVO: Campo para nome do contato #}
+                <label for="contato_nome">Nome do Contato</label>
+                <input type="text" class="form-control" id="contato_nome" name="contato_nome" value="{{ form_data.get('contato_nome', '') }}">
+            </div>
+            <div class="form-group">
+                 {# NOVO: Campo para e-mail do contato #}
+                <label for="contato_email">E-mail do Contato</label>
+                <input type="email" class="form-control" id="contato_email" name="contato_email" value="{{ form_data.get('contato_email', '') }}">
+            </div>
+            <div class="form-group">
+                 {# NOVO: Campo para telefone do contato #}
+                <label for="contato_telefone">Telefone do Contato</label>
+                <input type="text" class="form-control" id="contato_telefone" name="contato_telefone" value="{{ form_data.get('contato_telefone', '') }}">
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="mt-4">
+        <button type="submit" class="btn btn-primary" title="{% if edit_mode %}Salvar Alterações na Empresa{% else %}Cadastrar Cliente/Empresa{% endif %}">
+            <i class="fas fa-save"></i> {% if edit_mode %}Salvar Alterações na Empresa{% else %}Cadastrar Cliente/Empresa{% endif %}
+        </button>
+        <a href="{{ url_for('main.view_cliente', public_id=public_id) if edit_mode and public_id else url_for('main.listar_clientes') }}" class="btn btn-secondary" title="Cancelar">
+            <i class="fas fa-times"></i> Cancelar
+        </a>
+    </div>
+</form>
+{% endblock %}
+
+{% block head_extra %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+<style>
+    /* Adiciona um pouco de espaço abaixo do label do campo obrigatório para melhor visualização */
+    .required-field label::after {
+        margin-left: 1px; /* Pequeno ajuste se necessário */
+    }
+</style>
+{% endblock %}

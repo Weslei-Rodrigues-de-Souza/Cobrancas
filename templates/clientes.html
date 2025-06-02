@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+
+{% block title %}Lista de Clientes - Sistema de Cobranças{% endblock %}
+
+{% block head_extra %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap4.min.css">
+<style>
+    #clientesTable .actions-col { white-space: nowrap; }
+    #clientesTable .actions-col .btn { margin: 0 2px; }
+    .dataTables_wrapper .dataTables_length,
+    .dataTables_wrapper .dataTables_filter,
+    .dataTables_wrapper .dataTables_info,
+    .dataTables_wrapper .dataTables_paginate {
+        padding-top: 0.5em;
+        padding-bottom: 0.5em;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2>Clientes Cadastrados</h2>
+    <a href="{{ url_for('main.novo_cliente') }}" class="btn btn-success" title="Novo Cliente">
+        <i class="fas fa-plus"></i>
+    </a>
+</div>
+
+{% if lista_completa_clientes %}
+<div class="table-responsive">
+    <table id="clientesTable" class="table table-hover table-striped table-bordered" style="width:100%">
+        <thead class="thead-dark">
+            <tr>
+                <th>ID (Interno)</th>
+                <th>Nome</th>
+                <th>E-mail Principal</th>
+                <th>Telefone Principal</th>
+                <th class="actions-col no-sort">Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for cliente in lista_completa_clientes %}
+            <tr>
+                <td>{{ cliente.id }}</td>
+                <td><a href="{{ url_for('main.view_cliente', public_id=cliente.public_id) }}">{{ cliente.nome }}</a></td>
+                <td>{{ cliente.email_principal }}</td>
+                <td>{{ cliente.telefone_principal if cliente.telefone_principal else '-' }}</td>
+                <td class="actions-col text-center">
+                    <a href="{{ url_for('main.view_cliente', public_id=cliente.public_id) }}" class="btn btn-info btn-sm" title="Visualizar"><i class="fas fa-eye"></i></a>
+                    <a href="{{ url_for('main.editar_cliente', public_id=cliente.public_id) }}" class="btn btn-warning btn-sm" title="Editar"><i class="fas fa-edit"></i></a>
+                    <button type="button" class="btn btn-danger btn-sm" data-toggle="modal" data-target="#confirmDeleteModal{{ cliente.id }}" title="Excluir">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                    <div class="modal fade" id="confirmDeleteModal{{ cliente.id }}" tabindex="-1" role="dialog" aria-labelledby="confirmDeleteModalLabel{{ cliente.id }}" aria-hidden="true">
+                        <div class="modal-dialog" role="document">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title" id="confirmDeleteModalLabel{{ cliente.id }}">Confirmar Exclusão</h5>
+                                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                        <span aria-hidden="true">&times;</span>
+                                    </button>
+                                </div>
+                                <div class="modal-body">
+                                    Tem certeza que deseja excluir o cliente "{{ cliente.nome }}"? Esta ação também excluirá todos os contatos e boletos associados a ele. Esta ação não pode ser desfeita.
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                                    <form action="{{ url_for('main.excluir_cliente', public_id=cliente.public_id) }}" method="POST" style="display:inline;">
+                                        <button type="submit" class="btn btn-danger">Excluir</button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+    <div class="alert alert-info" role="alert">
+        Nenhum cliente cadastrado ainda. <a href="{{ url_for('main.novo_cliente') }}" class="alert-link">Clique aqui para adicionar o primeiro cliente.</a>
+    </div>
+{% endif %}
+{% endblock %}
+
+{% block scripts_extra %}
+<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.8/js/dataTables.bootstrap4.min.js"></script>
+<script>
+$(document).ready(function() {
+    if ($('#clientesTable').length && $.fn.DataTable) {
+        $('#clientesTable').DataTable({
+            language: {
+                url: "https://cdn.datatables.net/plug-ins/1.13.8/i18n/pt-BR.json"
+            },
+            lengthMenu: [[10, 25, 50, -1], [10, 25, 50, "Todos"]],
+            pageLength: 10,
+            paging: true,
+            lengthChange: true,
+            searching: true,
+            ordering: true,
+            info: true,
+            autoWidth: false,
+            responsive: true,
+            columnDefs: [
+                { orderable: false, targets: 'no-sort' }
+            ]
+        });
+    } else {
+        console.error("Tabela ou DataTable não está disponível.");
+    }
+});
+</script>
+{% endblock %}
