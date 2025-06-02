@@ -920,7 +920,9 @@ def dados_log_email_json(log_id):
         # Preparar os dados para JSON, tratando None e objetos relacionados
     cliente_nome = log.cliente.nome if log.cliente else 'Cliente Removido'
     boleto_public_id = log.boleto.public_id if log.boleto else 'Boleto Removido'
-
+    boleto_descricao = (log.boleto.descricao_completa or log.boleto.descricao_base) if log.boleto else 'Boleto Removido'
+    boleto_data_vencimento = log.boleto.data_vencimento.strftime('%d/%m/%Y') if log.boleto and log.boleto.data_vencimento else 'N/D'
+    
     log_data = {
     'id': log.id,
     'horario_disparo': log.horario_disparo.strftime('%d/%m/%Y %H:%M:%S') if log.horario_disparo else 'N/D',
@@ -933,6 +935,8 @@ def dados_log_email_json(log_id):
     'cliente_id': log.cliente_id,
     'cliente_nome': cliente_nome,
     'boleto_id': log.boleto_id,
+ 'boleto_descricao': boleto_descricao,
+ 'boleto_data_vencimento': boleto_data_vencimento,
     'boleto_public_id': boleto_public_id,
     'detalhes': log.detalhes or 'Sem detalhes adicionais.'
     }
