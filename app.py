@@ -1,8 +1,8 @@
 # app.py
 import os
 from flask import Flask, render_template, request, redirect, url_for, flash, Blueprint, jsonify
-from database import db, init_app as init_db, Cliente, Contato, Boleto, ConfiguracaoEmail, generate_uuid
-from datetime import datetime, timedelta, date, time as dt_time 
+from database import EmailLog, Cliente, Boleto, Contato, ConfiguracaoEmail # Importação da classe EmailLog
+from datetime import datetime, timedelta, date, time as dt_time
 from dateutil.relativedelta import relativedelta
 import uuid 
 import logging
