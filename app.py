@@ -762,6 +762,8 @@ def configuracoes_email():
         texto_padrao_email = request.form.get('texto_padrao_email') 
         dias_antecedencia_str = request.form.get('dias_antecedencia_vencimento')
         notificar_atrasados = request.form.get('notificar_atrasados') == 'on' # Capturar o valor do toggle/checkbox
+        app.logger.debug(f"Valor de 'notificar_atrasados' recebido do formulário: {request.form.get('notificar_atrasados')}")
+        app.logger.debug(f"Valor booleano processado para 'notificar_atrasados': {notificar_atrasados}")
         dia_semana_envio = request.form.get('dia_semana_envio')
         horario_envio_str = request.form.get('horario_envio')
         chave_api_gemini = request.form.get('chave_api_gemini')
@@ -814,6 +816,7 @@ def configuracoes_email():
             if not config:
                 config = ConfiguracaoEmail()
                 db.session.add(config)
+                app.logger.debug(f"Salvando 'notificar_atrasados' como: {notificar_atrasados}")
             
             config.email_remetente = email_remetente_gmail
             config.senha_remetente = senha_para_salvar 

@@ -45,7 +45,7 @@
             <div id="collapseAgendamento" class="collapse show" aria-labelledby="headingAgendamento" data-parent="#accordionConfiguracoes">
                 <div class="card-body">
  <div class="form-group form-check">
- <input type="checkbox" class="form-check-input" id="notificar_atrasados" name="notificar_atrasados" value="True" {% if form_data.get('notificar_atrasados', config.notificar_atrasados if config is defined and config.notificar_atrasados is not none else false) %} checked {% endif %}>
+ <input type="checkbox" class="form-check-input" id="notificar_atrasados" name="notificar_atrasados" value="True" {% if form_data.get('notificar_atrasados', config.notificar_atrasados if config is defined and config.notificar_atrasados is not none else false) in [True, 'True'] %} checked {% endif %}>
  <label class="form-check-label" for="notificar_atrasados">Notificar Boletos Atrasados?</label>
  <small class="form-text text-muted">Se ativado, o sistema também enviará notificações para boletos que já passaram da data de vencimento.</small>
  </div>
