@@ -5,6 +5,7 @@ from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import event, Index, inspect
 from sqlalchemy.engine import Engine
 from sqlite3 import Connection as SQLite3Connection
+from sqlalchemy.orm import relationship
 import logging
 
 db = SQLAlchemy()
@@ -110,7 +111,8 @@ class EmailLog(db.Model):
     status = db.Column(db.String(50), nullable=True) # Ex: sucesso, falha_autenticacao, etc.
     detalhes = db.Column(db.Text, nullable=True) # Detalhes adicionais sobre o status
 
-
+    boleto = relationship('Boleto', backref='logs_email', lazy=True)
+    cliente = relationship('Cliente', backref='logs_email', lazy=True)
 def init_app(app):
     base_dir = os.path.abspath(os.path.dirname(__file__))
     database_path = os.path.join(base_dir, 'cobrancas.db')
