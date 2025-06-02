@@ -893,7 +893,7 @@ def processar_notificacoes_manualmente():
 def listar_logs_email():
     page = request.args.get('page', 1, type=int)
     logs_por_pagina = 10 
-    log_entries = EmailLog.query.order_by(EmailLog.horario_disparo.desc()).paginate(
+    log_entries = db.session.query(EmailLog).order_by(EmailLog.horario_disparo.desc()).paginate(
         page=page, per_page=logs_por_pagina, error_out=False
     )
     return render_template('logs_email.html', logs=log_entries)
