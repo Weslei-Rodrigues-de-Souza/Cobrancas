@@ -51,7 +51,7 @@
                 </td>
                 <td>
                     {% if log.cliente %}
-                        <a href="{{ url_for('main.view_cliente', public_id=log.cliente.public_id) }}">{{ log.cliente.nome }}</a>
+ <a href="{{ url_for('main.view_cliente', public_id=log.cliente.public_id) }}" target="_blank">{{ log.cliente.nome }}</a>
                     {% else %}
                         Cliente Removido
                     {% endif %}
@@ -59,7 +59,7 @@
                  <td>
                     {% if log.boleto %}
                         <a href="{{ url_for('main.view_cliente', public_id=log.boleto.cliente.public_id) }}#boletos-section">{{ log.boleto.descricao_completa or log.boleto.descricao_base }}</a>
-                    {% else %}
+ {% else %}
                         Boleto Removido
                     {% endif %}
                 </td>
@@ -170,23 +170,22 @@ document.addEventListener('DOMContentLoaded', function () {
                 return response.json();
             })
             .then(data => {
-                if (data.success && data.log) {
-                    const log = data.log;
-                    let contentHtml = `
-                        <p><strong>Horário do Disparo:</strong> ${log.horario_disparo || 'N/D'}</p>
-                        <p><strong>Status:</strong> <span class="badge bg-${log.status === 'sucesso' ? 'success' : 'danger'}">${log.status || 'N/D'}</span></p>
-                        <p><strong>Remetente:</strong> ${log.email_remetente || 'N/D'}</p>
-                        <p><strong>Destinatário:</strong> ${log.email_destinatario || 'N/D'}</p>
+                if (data && data.id) { // Check if data exists and has an id property
+                    let contentHtml = `\
+                        <p><strong>Horário do Disparo:</strong> ${data.horario_disparo || 'N/D'}</p>
+                        <p><strong>Status:</strong> <span class="badge bg-${data.status === 'sucesso' ? 'success' : 'danger'}">${data.status || 'N/D'}</span></p>
+                        <p><strong>Remetente:</strong> ${data.email_remetente || 'N/D'}</p>
+                        <p><strong>Destinatário:</strong> ${data.email_destinatario || 'N/D'}</p>
                         {# A coluna CC só será exibida no modal, não na tabela principal #}
-                        ${log.email_cc ? `<p><strong>CC:</strong> ${log.email_cc}</p>` : ''}
-                        <p><strong>Assunto:</strong> ${log.assunto || 'Sem Assunto'}</p>
-                        <p><strong>Cliente:</strong> ${log.cliente_nome || 'Cliente Removido'}</p>
-                         <p><strong>Boleto:</strong> ${log.boleto_descricao || 'Boleto Removido'} (Vencimento: ${log.boleto_data_vencimento || 'N/D'})</p>
-                        ${log.detalhes ? `<p><strong>Detalhes:</strong> ${log.detalhes}</p>` : ''}
+                        ${data.email_cc ? `<p><strong>CC:</strong> ${data.email_cc}</p>` : ''}
+                        <p><strong>Assunto:</strong> ${data.assunto || 'Sem Assunto'}</p>
+                        <p><strong>Cliente:</strong> ${data.cliente_nome || 'Cliente Removido'}</p>
+                         <p><strong>Boleto:</strong> ${data.descricao_completa || data.descricao_base || 'Boleto Removido'} (Vencimento: ${data.data_vencimento || 'N/D'})</p>
+                        ${data.detalhes ? `<p><strong>Detalhes:</strong> ${data.detalhes}</p>` : ''}
                         <hr>
                         <h6>Conteúdo do E-mail:</h6>
                         <div class="border p-3" style="max-height: 400px; overflow-y: auto;">${log.mensagem_corpo || 'Conteúdo vazio.'}</div>
-                    `;
+                    `; // Note: kept log object for boleto details as it was convenient, but can also use data directly
                     modalBodyContent.innerHTML = contentHtml;
                 } else {
                     modalBodyContent.innerHTML = `<p class="text-danger">Erro ao carregar detalhes do log: ${data.message || 'Erro desconhecido'}</p>`;
