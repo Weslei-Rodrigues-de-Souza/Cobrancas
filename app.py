@@ -2,6 +2,7 @@
 import os
 from flask import Flask, render_template, request, redirect, url_for, flash, Blueprint, jsonify
 from database import db, EmailLog, Cliente, Boleto, Contato, ConfiguracaoEmail # Importação da classe EmailLog
+from datetime import datetime, timedelta, date, time as dt_time
 from database import generate_uuid # Importando generate_uuid
 from dateutil.relativedelta import relativedelta
 import uuid 
@@ -18,6 +19,7 @@ from email.mime.image import MIMEImage
 from email.utils import formataddr, parseaddr
 import re 
 import base64 
+
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'uma_chave_secreta_muito_forte_padrao')
