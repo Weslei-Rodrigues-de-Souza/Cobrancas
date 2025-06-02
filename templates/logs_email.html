@@ -36,7 +36,7 @@
         <tbody>
             {% for log in logs.items %}
             <tr>
-                <td>{{ log.horario_disparo.strftime('%d/%m/%Y %H:%M:%S') if log.horario_disparo else 'N/D' }}</td>
+                <td>{{ log.horario_disparo | strptime('%Y-%m-%d %H:%M:%S.%f') | strftime('%d/%m/%Y %H:%M:%S') if log.horario_disparo else 'N/D' }}</td>
                 <td>{{ log.email_remetente or 'N/D' }}</td>
                 <td>{{ log.email_destinatario or 'N/D' }}</td>
                 <td>{{ log.assunto or 'Sem Assunto' }}</td>
