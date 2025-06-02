@@ -1,7 +1,7 @@
 # app.py
 import os
 from flask import Flask, render_template, request, redirect, url_for, flash, Blueprint, jsonify
-from database import EmailLog, Cliente, Boleto, Contato, ConfiguracaoEmail # Importação da classe EmailLog
+from database import db, EmailLog, Cliente, Boleto, Contato, ConfiguracaoEmail # Importação da classe EmailLog
 from datetime import datetime, timedelta, date, time as dt_time
 from dateutil.relativedelta import relativedelta
 import uuid 
@@ -39,12 +39,13 @@ else:
         file_handler = logging.FileHandler('app_debug.log')
         file_handler.setFormatter(formatter)
         app.logger.addHandler(handler)
-init_db(app) 
+
 
 if 'SQLALCHEMY_DATABASE_URI' not in app.config:
     base_dir_for_db = os.path.abspath(os.path.dirname(__file__))
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(base_dir_for_db, 'cobrancas.db')
-
+    # INICIALIZAÇÃO DO SQLAlchemy
+    db.init_app(app)
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore
 from apscheduler.triggers.cron import CronTrigger
@@ -1273,5 +1274,8 @@ if not scheduler.running:
     except Exception as e: 
         app.logger.error(f"APScheduler: Falha ao iniciar agendador: {e}", exc_info=True)
 
+with app.app_context():
+    db.create_all()
+    
 if __name__ == '__main__':
     app.run(debug=True, use_reloader=False) 
