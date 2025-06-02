@@ -1323,4 +1323,8 @@ with app.app_context():
     else:
         app.logger.info("APScheduler: Horário de envio ou credenciais Gmail não definidas na tabela ConfiguracaoEmail. Job de notificações não agendado.")
 if __name__ == '__main__':
+    with app.app_context():
+        db.drop_all()
+        db.create_all()
+        print("Banco de dados recriado!")
     app.run(debug=True, use_reloader=False)
