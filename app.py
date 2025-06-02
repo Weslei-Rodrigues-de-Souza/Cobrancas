@@ -20,6 +20,13 @@ from email.utils import formataddr, parseaddr
 import re 
 import base64 
 
+# Função para formatar o horário para exibição no template
+def formatar_horario(dt_obj):
+    if isinstance(dt_obj, datetime):
+        return dt_obj.strftime('%d/%m/%Y %H:%M:%S')
+    # Retorna N/D se não for um objeto datetime ou se for None
+    return 'N/D'
+
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'uma_chave_secreta_muito_forte_padrao')
@@ -55,6 +62,9 @@ from apscheduler.jobstores.base import JobLookupError
 import atexit 
 jobstores = { 'default': SQLAlchemyJobStore(url=app.config['SQLALCHEMY_DATABASE_URI']) }
 scheduler = BackgroundScheduler(jobstores=jobstores, timezone='America/Sao_Paulo') # Definindo o timezone do scheduler
+
+# Registrar o filtro personalizado no ambiente Jinja2
+app.jinja_env.filters['formatar_horario'] = formatar_horario
 
 main_bp = Blueprint('main', __name__)
 
