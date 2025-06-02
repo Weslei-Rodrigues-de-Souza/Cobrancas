@@ -780,7 +780,7 @@ def configuracoes_email():
                 if config.horario_envio and 'horario_envio' not in form_data_repopulate :
                      form_data_repopulate['horario_envio'] = config.horario_envio.strftime('%H:%M')
                 form_data_repopulate['dias_antecedencia_vencimento'] = config.dias_antecedencia_vencimento if 'dias_antecedencia_vencimento' not in form_data_repopulate else form_data_repopulate['dias_antecedencia_vencimento']
-                form_data_repopulate['notificar_atrasados'] = config.notificar_atrasados
+ form_data_repopulate['notificar_atrasados'] = request.form.get('notificar_atrasados') == 'on'
                 form_data_repopulate['chave_api_gemini'] = 'Configurada' if config.chave_api_gemini else '' # Não repopula a chave
                 form_data_repopulate['dia_semana_envio'] = config.dia_semana_envio if 'dia_semana_envio' not in form_data_repopulate else form_data_repopulate['dia_semana_envio']
             form_data_repopulate['senha_configurada'] = senha_configurada_anteriormente

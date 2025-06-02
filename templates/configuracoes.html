@@ -166,9 +166,9 @@
  <input type="text" class="form-control" id="chave_api_gemini" name="chave_api_gemini" 
  placeholder="{{ 'Configurada' if form_data.get('chave_api_gemini_configurada') else 'Insira sua chave da API Gemini (opcional)' }}"
  aria-describedby="geminiApiKeyHelpBlock">
- {% if form_data.get('chave_api_gemini_configurada') %}
+ {% if form_data.get('chave_api_gemini_configurada') or config.chave_api_gemini %}
  <small id="geminiApiKeyConfiguradaHelp" class="form-text text-success">
- <i class="fas fa-check-circle"></i> Uma chave API Gemini já foi configurada. Preencha este campo apenas se desejar alterá-la.
+ <i class="fas fa-check-circle"></i> Uma senha já foi configurada. Preencha este campo apenas se desejar alterá-la.
  </small>
  {% endif %}
  <small id="geminiApiKeyHelpBlock" class="form-text text-muted">Se configurada, será usada para formatar a lista de boletos atrasados no e-mail quando a opção "Notificar Boletos Atrasados" estiver ativa.</small>
