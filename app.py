@@ -1019,20 +1019,18 @@ def enviar_email_cobranca(boleto_id_interno):
         # A implementação da chamada da API em si não está neste diff.
 
         corpo_email_html_template = config_email.texto_padrao_email.format(
-            nome_cliente=cliente.nome or "Cliente",
+            nombre_contato=nome_contato_para_template,
             id_boleto=boleto.public_id,
             descricao_boleto=boleto.descricao_completa or boleto.descricao_base or "Serviços Prestados",
             nome_remetente_empresa=config_email.nome_remetente or "Sua Empresa"
         )
         assunto_email = f"Cobrança: {boleto.descricao_completa or boleto.descricao_base} - Venc: {boleto.data_vencimento.strftime('%d/%m/%Y') if boleto.data_vencimento else 'N/D'}"
-
         if config_email.nome_remetente:
             remetente_formatado = formataddr((config_email.nome_remetente, config_email.email_remetente))
         else:
-            remetente_formatado = config_email.email_remetente
-
-        template_vars = {
-            'nome_contato': nome_contato_para_template,
+ remetente_formatado = config_email.email_remetente
+            
+        format_params = {
             'data_vencimento': boleto.data_vencimento.strftime('%d/%m/%Y') if boleto.data_vencimento else "N/D",
             'valor_boleto': f"{boleto.valor:,.2f}".replace(',', '#').replace('.', ',').replace('#', '.') if boleto.valor is not None else "N/D",
             'lista_datas_vencidas': lista_datas_vencidas_str if config_email.notificar_atrasados else "Nenhuma" # Só inclui a lista se a notificação de atrasados estiver ligada
@@ -1045,10 +1043,9 @@ def enviar_email_cobranca(boleto_id_interno):
         if destinatarios_cc_str:
             msg_root['Cc'] = destinatarios_cc_str
 
-        corpo_email_processado = corpo_email_html_template
-        # Re-processar o template com as variáveis, incluindo {lista_datas_vencidas}
-        corpo_email_processado = corpo_email_html_template.format(**template_vars)
+        corpo_email_processado = corpo_email_html_template.format(**format_params)
         img_pattern = re.compile(r'<img[^>]*src="data:image/(png|jpeg|gif|webp);base64,([^"]+)"[^>]*>')
+        image_parts = [] 
 
         matches = list(img_pattern.finditer(corpo_email_html_template))
         for i, match in enumerate(matches):

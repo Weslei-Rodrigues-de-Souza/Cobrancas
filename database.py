@@ -85,7 +85,7 @@ class ConfiguracaoEmail(db.Model):
 
     # MODIFICADO: Texto padrão para usar {nome_do_contato_principal}
     texto_padrao_email = db.Column(db.Text, nullable=True, 
-                                   default="<p>Olá {nome_do_contato_principal},</p><p>Segue o boleto referente a <strong>{descricao_boleto}</strong> no valor de <strong>R$ {valor_boleto}</strong>, com vencimento em <em>{data_vencimento}</em>.</p><p>Qualquer dúvida, estamos à disposição.</p><p>Atenciosamente,<br>{nome_remetente_empresa}</p>")
+                                   default="<p>Olá {nome_contato},</p><p>Segue o boleto referente a <strong>{descricao_boleto}</strong> no valor de <strong>R$ {valor_boleto}</strong>, com vencimento em <em>{data_vencimento}</em>.</p><p>Qualquer dúvida, estamos à disposição.</p><p>Atenciosamente,<br>{nome_remetente_empresa}</p>")
     dia_semana_envio = db.Column(db.String(20), nullable=True, default='segunda') 
     horario_envio = db.Column(db.Time, nullable=True) 
     dias_antecedencia_vencimento = db.Column(db.Integer, nullable=True, default=3)
