@@ -904,11 +904,7 @@ def processar_notificacoes_manualmente():
 # --- Rota para Visualização de Logs de E-mail ---
 @main_bp.route('/logs_email')
 def listar_logs_email():
-    page = request.args.get('page', 1, type=int)
-    logs_por_pagina = 10 
-    log_entries = db.session.query(EmailLog).order_by(EmailLog.horario_disparo.desc()).paginate(
-        page=page, per_page=logs_por_pagina, error_out=False
-    )
+    log_entries = db.session.query(EmailLog).order_by(EmailLog.horario_disparo.desc()).all()
     return render_template('logs_email.html', logs=log_entries)
 
 @main_bp.route('/logs_email/<int:log_id>/dados_json')

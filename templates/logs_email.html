@@ -3,7 +3,20 @@
 {% block title %}Logs de Envio de E-mail - Sistema de Cobranças{% endblock %}
 
 {% block content %}
-<h1 class="my-4">Logs de Envio de E-mail</h1>
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2>Logs de Envio de E-mail</h2>
+    {# Não há botão de adicionar para logs de email, manter apenas o título #}
+</div>
+{% endblock %}
+
+{% block head_extra %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap4.min.css">
+<style>
+    #logsEmailTable .actions-col { white-space: nowrap; }
+    #logsEmailTable .actions-col .btn { margin: 0 2px; }
+</style>
+{% endblock %}
 
 {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
@@ -18,9 +31,9 @@
     {% endif %}
 {% endwith %}
 
-{% if logs.items %}
+{% if logs %} {# Check if logs list is not empty #}
 <div class="table-responsive">
-    <table class="table table-striped table-hover">
+    <table id="logsEmailTable" class="table table-striped table-hover table-bordered display" style="width:100%">
         <thead>
             <tr>
                 <th>Horário</th>
@@ -34,7 +47,7 @@
             </tr>
         </thead>
         <tbody>
-            {% for log in logs.items %}
+            {% for log in logs %} {# Iterate directly over the list #}
             <tr>
                 <td>{{ log.horario_disparo | formatar_horario if log.horario_disparo else 'N/D' }}</td>
                 <td>{{ log.email_remetente or 'N/D' }}</td>
@@ -53,7 +66,7 @@
                     {% if log.cliente %}
  <a href="{{ url_for('main.view_cliente', public_id=log.cliente.public_id) }}" target="_blank">{{ log.cliente.nome }}</a>
                     {% else %}
-                        Cliente Removido
+ Cliente Removido
                     {% endif %}
                 </td>
                  <td>
@@ -61,7 +74,7 @@
                         <a href="{{ url_for('main.view_cliente', public_id=log.boleto.cliente.public_id) }}#boletos-section">{{ log.boleto.descricao_completa or log.boleto.descricao_base }}</a>
  {% else %}
                         Boleto Removido
-                    {% endif %}
+ {% endif %}
                 </td>
                 <td>
                     <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#viewLogModal" data-log-id="{{ log.id }}">
@@ -74,46 +87,7 @@
     </table>
 </div>
 
-<!-- Controles de Paginação -->
-<nav aria-label="Paginação dos Logs">
-    <ul class="pagination justify-content-center">
-        {% if logs.has_prev %}
-        <li class="page-item">
-            <a class="page-link" href="{{ url_for('main.listar_logs_email', page=logs.prev_num) }}" aria-label="Anterior">
-                <span aria-hidden="true">&laquo;</span>
-            </a>
-        </li>
-        {% else %}
-        <li class="page-item disabled">
-            <span class="page-link" aria-hidden="true">&laquo;</span>
-        </li>
-        {% endif %}
-
-        {% for page in logs.iter_pages() %}
-        {% if page %}
-            {% if page != logs.page %}
-            <li class="page-item"><a class="page-link" href="{{ url_for('main.listar_logs_email', page=page) }}">{{ page }}</a></li>
-            {% else %}
-            <li class="page-item active" aria-current="page"><span class="page-link">{{ page }}</span></li>
-            {% endif %}
-        {% else %}
-        <li class="page-item disabled"><span class="page-link">...</span></li>
-        {% endif %}
-        {% endfor %}
-
-        {% if logs.has_next %}
-        <li class="page-item">
-            <a class="page-link" href="{{ url_for('main.listar_logs_email', page=logs.next_num) }}" aria-label="Próxima">
-                <span aria-hidden="true">&raquo;</span>
-            </a>
-        </li>
-        {% else %}
-        <li class="page-item disabled">
-            <span class="page-link" aria-hidden="true">&raquo;</span>
-        </li>
-        {% endif %}
-    </ul>
-</nav>
+{# Manual pagination removed #}
 
 {% else %}
 <div class="alert alert-info" role="alert">
@@ -146,7 +120,17 @@
 {% block scripts %}
 {{ super() }}
 <script>
-document.addEventListener('DOMContentLoaded', function () {
+$(document).ready(function() {
+    // Initialize DataTables
+    $('#logsEmailTable').DataTable({
+        language: { url: "https://cdn.datatables.net/plug-ins/1.13.8/i18n/pt-BR.json" },
+        // Add other DataTable options as needed (e.g., columnDefs for sorting)
+         columnDefs: [
+            { orderable: false, targets: -1 } // Disable sorting on the last column (Ações)
+        ]
+    });
+
+    // Modal event listener
     const viewLogModal = document.getElementById('viewLogModal');
     viewLogModal.addEventListener('show.bs.modal', function (event) {
         // Botão que acionou o modal
@@ -154,7 +138,7 @@ document.addEventListener('DOMContentLoaded', function () {
         // Extrai o ID do log do atributo data-log-id
         const logId = button.getAttribute('data-log-id');
         // Elemento onde o conteúdo do log será carregado
-        const modalBodyContent = viewLogModal.querySelector('#logDetailsContent');
+        const modalBodyContent = document.getElementById('logDetailsContent'); // Use getElementById directly
 
         // Carregar conteúdo via AJAX
         modalBodyContent.innerHTML = '<p>Carregando...</p>'; // Mostrar um loader
@@ -162,40 +146,28 @@ document.addEventListener('DOMContentLoaded', function () {
         fetch(`/logs_email/${logId}/dados_json`)
             .then(response => {
                 if (!response.ok) {
-                     // Tentar ler como texto para ver a mensagem de erro do servidor
+                    // Tentar ler como texto para ver a mensagem de erro do servidor
                     return response.text().then(text => {
                         throw new Error(`HTTP error! status: ${response.status}, body: ${text}`);
                     });
                 }
                 return response.json();
             })
-            .then(data => {
-                if (data && data.id) { // Check if data exists and has an id property
-                    let contentHtml = `\
-                        <p><strong>Horário do Disparo:</strong> ${data.horario_disparo || 'N/D'}</p>
-                        <p><strong>Status:</strong> <span class="badge bg-${data.status === 'sucesso' ? 'success' : 'danger'}">${data.status || 'N/D'}</span></p>
-                        <p><strong>Remetente:</strong> ${data.email_remetente || 'N/D'}</p>
-                        <p><strong>Destinatário:</strong> ${data.email_destinatario || 'N/D'}</p>
-                        {# A coluna CC só será exibida no modal, não na tabela principal #}
-                        ${data.email_cc ? `<p><strong>CC:</strong> ${data.email_cc}</p>` : ''}
-                        <p><strong>Assunto:</strong> ${data.assunto || 'Sem Assunto'}</p>
-                        <p><strong>Cliente:</strong> ${data.cliente_nome || 'Cliente Removido'}</p>
-                         <p><strong>Boleto:</strong> ${data.descricao_completa || data.descricao_base || 'Boleto Removido'} (Vencimento: ${data.data_vencimento || 'N/D'})</p>
-                        ${data.detalhes ? `<p><strong>Detalhes:</strong> ${data.detalhes}</p>` : ''}
-                        <hr>
-                        <h6>Conteúdo do E-mail:</h6>
-                        <div class="border p-3" style="max-height: 400px; overflow-y: auto;">${log.mensagem_corpo || 'Conteúdo vazio.'}</div>
-                    `; // Note: kept log object for boleto details as it was convenient, but can also use data directly
-                    modalBodyContent.innerHTML = contentHtml;
-                } else {
-                    modalBodyContent.innerHTML = `<p class="text-danger">Erro ao carregar detalhes do log: ${data.message || 'Erro desconhecido'}</p>`;
-                    console.error('Erro ao carregar detalhes do log:', data.message);
-                }
-            })
             .catch(error => {
                 modalBodyContent.innerHTML = '<p class="text-danger">Erro de rede ou servidor ao carregar detalhes do log.</p>';
                 console.error('Erro na requisição AJAX:', error);
             });
+        });
+    });
+
+    // DataTables Initialization
+    if ($('#logsEmailTable').length && $.fn.DataTable) {
+        $('#logsEmailTable').DataTable({
+            language: { url: "https://cdn.datatables.net/plug-ins/1.13.8/i18n/pt-BR.json" },
+            // Add other DataTable options as needed (e.g., columnDefs for sorting)
+        });
+    } else {
+        console.error("Tabela ou DataTable não está disponível.");
     });
 });
 </script>
