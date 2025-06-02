@@ -905,6 +905,7 @@ def processar_notificacoes_manualmente():
 @main_bp.route('/logs_email')
 def listar_logs_email():
     log_entries = db.session.query(EmailLog).order_by(EmailLog.horario_disparo.desc()).all()
+    print(log_entries)
     return render_template('logs_email.html', logs=log_entries)
 
 @main_bp.route('/logs_email/<int:log_id>/dados_json')

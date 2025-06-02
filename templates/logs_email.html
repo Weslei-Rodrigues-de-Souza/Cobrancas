@@ -126,54 +126,49 @@
 {% block scripts %}
 {{ super() }}
 <script>
-$(document).ready(function() {
-    // Initialize DataTables
+$(document).ready(function () {
+    // Inicializa DataTable
     $('#logsEmailTable').DataTable({
         language: { url: "https://cdn.datatables.net/plug-ins/1.13.8/i18n/pt-BR.json" },
-        // Add other DataTable options as needed (e.g., columnDefs for sorting)
-         columnDefs: [
-            { orderable: false, targets: -1 } // Disable sorting on the last column (Ações)
-        ]
+        columnDefs: [
+            { orderable: false, targets: -1 } // Desativa ordenação da coluna Ações
+        ],
+        responsive: true,
+        pageLength: 10
     });
 
-    // Modal event listener
+    // Lógica do modal
     const viewLogModal = document.getElementById('viewLogModal');
     viewLogModal.addEventListener('show.bs.modal', function (event) {
-        // Botão que acionou o modal
         const button = event.relatedTarget;
-        // Extrai o ID do log do atributo data-log-id
         const logId = button.getAttribute('data-log-id');
-        // Elemento onde o conteúdo do log será carregado
-        const modalBodyContent = document.getElementById('logDetailsContent'); // Use getElementById directly
-
-        // Carregar conteúdo via AJAX
-        modalBodyContent.innerHTML = '<p>Carregando...</p>'; // Mostrar um loader
+        const modalBodyContent = document.getElementById('logDetailsContent');
+        modalBodyContent.innerHTML = '<p>Carregando...</p>';
 
         fetch(`/logs_email/${logId}/dados_json`)
             .then(response => {
                 if (!response.ok) {
-                    // Tentar ler como texto para ver a mensagem de erro do servidor
                     return response.text().then(text => {
-                        throw new Error(`HTTP error! status: ${response.status}, body: ${text}`);
+                        throw new Error(`Erro ${response.status}: ${text}`);
                     });
                 }
                 return response.json();
             })
+            .then(data => {
+                modalBodyContent.innerHTML = `
+                    <strong>Destinatário:</strong> ${data.email_destinatario}<br>
+                    <strong>Assunto:</strong> ${data.assunto}<br>
+                    <strong>Status:</strong> ${data.status}<br>
+                    <strong>Detalhes:</strong> ${data.detalhes || '—'}<br>
+                    <strong>Mensagem:</strong><br><pre>${data.mensagem_corpo}</pre>
+                `;
+            })
             .catch(error => {
-                modalBodyContent.innerHTML = '<p class="text-danger">Erro de rede ou servidor ao carregar detalhes do log.</p>';
+                modalBodyContent.innerHTML = '<p class="text-danger">Erro ao carregar os dados do log.</p>';
                 console.error('Erro na requisição AJAX:', error);
             });
-        });
     });
+});
 
-    // DataTables Initialization
-    if ($('#logsEmailTable').length && $.fn.DataTable) {
-        $('#logsEmailTable').DataTable({
-            language: { url: "https://cdn.datatables.net/plug-ins/1.13.8/i18n/pt-BR.json" },
-            // Add other DataTable options as needed (e.g., columnDefs for sorting)
-        });
-    } else {
-        console.error("Tabela ou DataTable não está disponível.");
-    };
 </script>
 {% endblock %}
